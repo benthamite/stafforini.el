@@ -49,6 +49,13 @@ NAME, if non-nil, is used as the compilation buffer name."
            (lambda (_mode) name))))
     (compile command)))
 
+(defun stafforini--reindex-suffix ()
+  "Return a shell command fragment that rebuilds the search index."
+  (format " && bash %s"
+          (shell-quote-argument
+           (expand-file-name "build-search-index.sh"
+                             stafforini-scripts-dir))))
+
 ;;;; Commands
 
 ;;;###autoload
@@ -63,32 +70,38 @@ NAME, if non-nil, is used as the compilation buffer name."
 
 ;;;###autoload
 (defun stafforini-export-all-notes ()
-  "Export all org notes to Hugo markdown in batch mode."
+  "Export all org notes to Hugo markdown and rebuild the search index."
   (interactive)
   (stafforini--compile
-   (format "emacs --batch -l %s" (shell-quote-argument
-                                  (expand-file-name "export-notes.el"
-                                                    stafforini-scripts-dir)))
+   (concat
+    (format "emacs --batch -l %s" (shell-quote-argument
+                                   (expand-file-name "export-notes.el"
+                                                     stafforini-scripts-dir)))
+    (stafforini--reindex-suffix))
    "*stafforini-export-notes*"))
 
 ;;;###autoload
 (defun stafforini-export-all-quotes ()
-  "Export all org quotes to Hugo markdown in batch mode."
+  "Export all org quotes to Hugo markdown and rebuild the search index."
   (interactive)
   (stafforini--compile
-   (format "bash %s" (shell-quote-argument
-                      (expand-file-name "export-quotes.sh"
-                                        stafforini-scripts-dir)))
+   (concat
+    (format "bash %s" (shell-quote-argument
+                       (expand-file-name "export-quotes.sh"
+                                         stafforini-scripts-dir)))
+    (stafforini--reindex-suffix))
    "*stafforini-export-quotes*"))
 
 ;;;###autoload
 (defun stafforini-update-works ()
-  "Generate or update work pages from BibTeX data."
+  "Generate or update work pages from BibTeX data and rebuild the search index."
   (interactive)
   (stafforini--compile
-   (format "python %s --skip-postprocess" (shell-quote-argument
-                                           (expand-file-name "generate-work-pages.py"
-                                                             stafforini-scripts-dir)))
+   (concat
+    (format "python %s --skip-postprocess" (shell-quote-argument
+                                            (expand-file-name "generate-work-pages.py"
+                                                              stafforini-scripts-dir)))
+    (stafforini--reindex-suffix))
    "*stafforini-update-works*"))
 
 ;;;###autoload
@@ -125,10 +138,20 @@ The server runs in a dedicated `*hugo-server*' buffer."
       (message "Hugo server is not running."))))
 
 ;;;###autoload
+(defun stafforini-rebuild-search-index ()
+  "Rebuild the Pagefind search index for local development."
+  (interactive)
+  (stafforini--compile
+   (format "bash %s" (shell-quote-argument
+                      (expand-file-name "build-search-index.sh"
+                                        stafforini-scripts-dir)))
+   "*stafforini-search-index*"))
+
+;;;###autoload
 (defun stafforini-full-rebuild ()
   "Run the full build pipeline sequentially.
 Steps: prepare notes, export notes, export quotes, update work
-pages, update backlinks, hugo build, pagefind index."
+pages, update backlinks, build search index."
   (interactive)
   (let ((default-directory stafforini-hugo-dir))
     (stafforini--compile
@@ -150,8 +173,9 @@ pages, update backlinks, hugo build, pagefind index."
        (format "python %s" (shell-quote-argument
                             (expand-file-name "generate-backlinks.py"
                                               stafforini-scripts-dir)))
-       "hugo --minify"
-       "npx pagefind --site public")
+       (format "bash %s" (shell-quote-argument
+                          (expand-file-name "build-search-index.sh"
+                                            stafforini-scripts-dir))))
       " && ")
      "*stafforini-full-rebuild*")))
 
