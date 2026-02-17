@@ -10,8 +10,10 @@
 ;;; Commentary:
 
 ;; Emacs commands for building and previewing the stafforini.com Hugo site.
-;; Wraps the project's Python and Elisp build scripts, running them
+;; Companion package to https://github.com/benthamite/stafforini.com —
+;; wraps the project's Python and Elisp build scripts, running them
 ;; asynchronously via `compile' so output appears in a compilation buffer.
+;; See PUBLISHING.md in the Hugo repo for the full workflow documentation.
 
 ;;; Code:
 
