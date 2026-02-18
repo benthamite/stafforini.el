@@ -187,6 +187,7 @@ pages, update backlinks, build search index."
 (defvar gptel-use-context)
 (defvar gptel-tools)
 (defvar gptel-use-tools)
+(defvar gptel-include-reasoning)
 (defvar gptel--known-backends)
 
 (declare-function gptel-request "gptel")
@@ -284,7 +285,8 @@ Uses `gptel' with the image as context via a let-binding, so the global
                                      :mime (mailcap-file-name-to-mime-type file))))
           (gptel-use-context 'user)
           (gptel-tools nil)
-          (gptel-use-tools nil))
+          (gptel-use-tools nil)
+          (gptel-include-reasoning nil))
       (gptel-request stafforini--describe-image-prompt
         :callback
         (lambda (response info)
