@@ -181,13 +181,28 @@ pages, update backlinks, build search index."
 
 ;;;; Image insertion
 
+(defvar gptel-backend)
+(defvar gptel-model)
 (defvar gptel-context)
 (defvar gptel-use-context)
+(defvar gptel-tools)
+(defvar gptel-use-tools)
+(defvar gptel--known-backends)
 
 (declare-function gptel-request "gptel")
 (declare-function gptel--model-capable-p "gptel")
 (declare-function mailcap-file-name-to-mime-type "mailcap")
 (declare-function org-display-inline-images "org")
+
+(defcustom stafforini-image-description-model
+  '("Gemini" . gemini-flash-latest)
+  "Model to use for image description.
+The value is a cons cell whose car is the backend name and whose cdr is the
+model symbol.  See `gptel-extras-ai-models' for available options.
+If nil, use the currently active gptel model."
+  :type '(choice (const :tag "Use current model" nil)
+                 (cons (string :tag "Backend") (symbol :tag "Model")))
+  :group 'stafforini)
 
 (defconst stafforini--describe-image-prompt
   "Describe the attached image. Respond with EXACTLY two lines, nothing else:
@@ -251,24 +266,35 @@ RESPONSE should contain lines matching \"SHORT: ...\" and \"ALT: ...\"."
   "Describe image in FILE using AI.
 CALLBACK is called with two arguments: SHORT-NAME and ALT-TEXT.
 Uses `gptel' with the image as context via a let-binding, so the global
-`gptel-context' is not disturbed."
+`gptel-context' is not disturbed.  The model used is controlled by
+`stafforini-image-description-model'."
   (require 'gptel)
-  (unless (gptel--model-capable-p 'media)
-    (user-error
-     "Current gptel model does not support images; select a vision-capable model"))
-  (let ((gptel-context (list (list (expand-file-name file)
-                                   :mime (mailcap-file-name-to-mime-type file))))
-        (gptel-use-context 'user))
-    (gptel-request stafforini--describe-image-prompt
-      :callback
-      (lambda (response info)
-        (if response
-            (let* ((parsed (stafforini--parse-image-descriptions response))
-                   (short (or (car parsed) "image"))
-                   (alt (or (cdr parsed) "Image")))
-              (funcall callback short alt))
-          (user-error "Image description failed: %s"
-                      (plist-get info :status)))))))
+  (let* ((model-spec stafforini-image-description-model)
+         (gptel-backend (if model-spec
+                            (or (alist-get (car model-spec) gptel--known-backends
+                                          nil nil #'string=)
+                                (user-error "Backend %S not found in gptel"
+                                            (car model-spec)))
+                          gptel-backend))
+         (gptel-model (if model-spec (cdr model-spec) gptel-model)))
+    (unless (gptel--model-capable-p 'media)
+      (user-error "Model %s does not support images; select a vision-capable model"
+                  gptel-model))
+    (let ((gptel-context (list (list (expand-file-name file)
+                                     :mime (mailcap-file-name-to-mime-type file))))
+          (gptel-use-context 'user)
+          (gptel-tools nil)
+          (gptel-use-tools nil))
+      (gptel-request stafforini--describe-image-prompt
+        :callback
+        (lambda (response info)
+          (if response
+              (let* ((parsed (stafforini--parse-image-descriptions response))
+                     (short (or (car parsed) "image"))
+                     (alt (or (cdr parsed) "Image")))
+                (funcall callback short alt))
+            (user-error "Image description failed: %s"
+                        (plist-get info :status))))))))
 
 ;;;###autoload
 (defun stafforini-insert-image (&optional file)
