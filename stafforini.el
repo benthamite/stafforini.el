@@ -3,7 +3,7 @@
 ;; Author: Pablo Stafforini
 ;; URL: https://github.com/benthamite/stafforini.el
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (paths "0.1"))
+;; Package-Requires: ((emacs "29.1") (paths "0.1") (gptel "0.9"))
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -178,6 +178,144 @@ pages, update backlinks, build search index."
                                             stafforini-scripts-dir))))
       " && ")
      "*stafforini-full-rebuild*")))
+
+;;;; Image insertion
+
+(defvar gptel-context)
+(defvar gptel-use-context)
+
+(declare-function gptel-request "gptel")
+(declare-function gptel--model-capable-p "gptel")
+(declare-function mailcap-file-name-to-mime-type "mailcap")
+(declare-function org-display-inline-images "org")
+
+(defconst stafforini--describe-image-prompt
+  "Describe the attached image. Respond with EXACTLY two lines, nothing else:
+SHORT: <2-5 word description for filename, lowercase, no punctuation>
+ALT: <1-2 sentence alt text, max 50 words>"
+  "Prompt for generating short and long image descriptions via AI.")
+
+(defun stafforini--get-article-slug ()
+  "Get the article slug for the current org buffer.
+The slug is the file name stem, which matches the `:EXPORT_FILE_NAME:' property
+used by ox-hugo."
+  (if-let ((file (buffer-file-name)))
+      (file-name-sans-extension (file-name-nondirectory file))
+    (user-error "Buffer is not visiting a file")))
+
+(defun stafforini--slugify (string)
+  "Convert STRING to a kebab-case slug suitable for a filename."
+  (thread-last string
+    (downcase)
+    (replace-regexp-in-string "[^a-z0-9 ]" "")
+    (string-trim)
+    (replace-regexp-in-string " +" "-")))
+
+(defun stafforini--save-clipboard-image ()
+  "Save the system clipboard image to a temporary file.
+Return the temporary file path."
+  (unless (executable-find "pngpaste")
+    (user-error "`pngpaste' not found; install it with `brew install pngpaste'"))
+  (let ((temp-file (make-temp-file "stafforini-image-" nil ".png")))
+    (unless (zerop (call-process "pngpaste" nil nil nil temp-file))
+      (delete-file temp-file)
+      (user-error "No image found on the clipboard"))
+    temp-file))
+
+(defun stafforini--unique-file-path (path)
+  "Return PATH if it doesn't exist, otherwise append a numeric suffix."
+  (if (not (file-exists-p path))
+      path
+    (let* ((dir (file-name-directory path))
+           (base (file-name-sans-extension (file-name-nondirectory path)))
+           (ext (file-name-extension path))
+           (counter 1)
+           new-path)
+      (while (file-exists-p
+              (setq new-path (file-name-concat
+                              dir (format "%s-%d.%s" base counter ext))))
+        (setq counter (1+ counter)))
+      new-path)))
+
+(defun stafforini--parse-image-descriptions (response)
+  "Parse RESPONSE into (SHORT-NAME . ALT-TEXT).
+RESPONSE should contain lines matching \"SHORT: ...\" and \"ALT: ...\"."
+  (let (short alt)
+    (when (string-match "SHORT:[ \t]*\\([^\n]+\\)" response)
+      (setq short (string-trim (match-string 1 response))))
+    (when (string-match "ALT:[ \t]*\\([^\n]+\\)" response)
+      (setq alt (string-trim (match-string 1 response))))
+    (cons short alt)))
+
+(defun stafforini--describe-image (file callback)
+  "Describe image in FILE using AI.
+CALLBACK is called with two arguments: SHORT-NAME and ALT-TEXT.
+Uses `gptel' with the image as context via a let-binding, so the global
+`gptel-context' is not disturbed."
+  (require 'gptel)
+  (unless (gptel--model-capable-p 'media)
+    (user-error
+     "Current gptel model does not support images; select a vision-capable model"))
+  (let ((gptel-context (list (list (expand-file-name file)
+                                   :mime (mailcap-file-name-to-mime-type file))))
+        (gptel-use-context 'user))
+    (gptel-request stafforini--describe-image-prompt
+      :callback
+      (lambda (response info)
+        (if response
+            (let* ((parsed (stafforini--parse-image-descriptions response))
+                   (short (or (car parsed) "image"))
+                   (alt (or (cdr parsed) "Image")))
+              (funcall callback short alt))
+          (user-error "Image description failed: %s"
+                      (plist-get info :status)))))))
+
+;;;###autoload
+(defun stafforini-insert-image (&optional file)
+  "Insert an image at point in an org buffer.
+The image is stored in `paths-dir-org-images' under a subdirectory named after
+the article slug, with an AI-generated descriptive filename.
+
+If FILE is non-nil, use it directly.  Otherwise, prompt the user to choose
+between pasting from the clipboard or selecting a file.
+
+Two AI-generated descriptions are produced: a short one for the filename and
+a longer one for the alt text.  Both are presented for editing before use."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "This command must be run in an org-mode buffer"))
+  (let* ((source (if file 'file
+                   (intern (completing-read "Image source: "
+                                           '("clipboard" "file") nil t))))
+         (image-file (pcase source
+                       ('file (or file (read-file-name "Image file: " nil nil t)))
+                       ('clipboard (stafforini--save-clipboard-image))))
+         (ext (file-name-extension image-file))
+         (slug (stafforini--get-article-slug))
+         (buf (current-buffer))
+         (pos (point-marker)))
+    (stafforini--describe-image
+     image-file
+     (lambda (short-name alt-text)
+       (let* ((short-name (read-string "Filename: " short-name))
+              (alt-text (read-string "Alt text: " alt-text))
+              (dest-dir (file-name-concat paths-dir-org-images slug))
+              (dest-file (stafforini--unique-file-path
+                          (file-name-concat
+                           dest-dir
+                           (concat (stafforini--slugify short-name) "." ext)))))
+         (make-directory dest-dir t)
+         (copy-file image-file dest-file)
+         (when (eq source 'clipboard)
+           (delete-file image-file))
+         (with-current-buffer buf
+           (save-excursion
+             (goto-char pos)
+             (unless (bolp) (insert "\n"))
+             (insert (format "#+attr_html: :alt %s\n[[file:%s]]\n"
+                             alt-text dest-file))
+             (org-display-inline-images
+              nil nil (line-beginning-position -2) (point)))))))))
 
 (provide 'stafforini)
 ;;; stafforini.el ends here
