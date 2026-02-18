@@ -115,6 +115,16 @@ NAME, if non-nil, is used as the compilation buffer name."
    "*stafforini-update-backlinks*"))
 
 ;;;###autoload
+(defun stafforini-process-pdfs ()
+  "Strip annotations from PDFs and generate first-page thumbnails."
+  (interactive)
+  (stafforini--compile
+   (format "python %s" (shell-quote-argument
+                        (expand-file-name "process-pdfs.py"
+                                          stafforini-scripts-dir)))
+   "*stafforini-process-pdfs*"))
+
+;;;###autoload
 (defun stafforini-start-server ()
   "Start the Hugo dev server, or switch to its buffer if already running.
 The server runs in a dedicated `*hugo-server*' buffer."
@@ -173,9 +183,11 @@ pages, update backlinks, build search index."
        (format "python %s" (shell-quote-argument
                             (expand-file-name "generate-backlinks.py"
                                               stafforini-scripts-dir)))
-       (format "bash %s" (shell-quote-argument
-                          (expand-file-name "build-search-index.sh"
-                                            stafforini-scripts-dir))))
+       (format "python %s" (shell-quote-argument
+                            (expand-file-name "process-pdfs.py"
+                                              stafforini-scripts-dir)))
+       "hugo --minify"
+       "npx pagefind --site public")
       " && ")
      "*stafforini-full-rebuild*")))
 
