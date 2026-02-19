@@ -1,0 +1,72 @@
+#+title: stafforini.el
+#+author: Pablo Stafforini
+
+Emacs commands for building and previewing the [[https://github.com/benthamite/stafforini.com][stafforini.com]] Hugo site.
+
+* Overview
+
+This package wraps the project's Python and shell build scripts, running them asynchronously via =compile= so output appears in a compilation buffer with proper error highlighting. See =PUBLISHING.md= in the Hugo repo for additional details.
+
+* Workflows
+
+** Editing a note
+
+1. Edit the org file.
+2. Export with =C-c C-e H H= (current subtree).
+3. Hugo live reload picks it up — no restart needed.
+
+** Editing a quote
+
+1. Edit the =:public:= subtree in the bibliographic note.
+2. Export with =C-c C-e H A= (all subtrees).
+3. Hugo live reload picks it up — no restart needed.
+
+** Editing a BibTeX entry
+
+1. Edit the =.bib= file.
+2. =M-x stafforini-update-works=.
+3. =M-x stafforini-start-server= — *restart required* (Hugo doesn't re-render note pages that cite the changed work).
+
+** Adding a new org note
+
+1. Create the org file.
+2. =M-x stafforini-prepare-notes= (adds ox-hugo metadata).
+3. Export with =C-c C-e H H=.
+
+** Changed links between notes
+
+1. =M-x stafforini-update-backlinks=.
+2. =M-x stafforini-start-server= — *restart required* (backlinks data affects other pages).
+
+** Bulk export (after migration or mass edit)
+
+1. =M-x stafforini-export-all-notes=.
+2. =M-x stafforini-export-all-quotes=.
+3. =M-x stafforini-update-works=.
+4. =M-x stafforini-start-server=.
+
+** Deploy to production
+
+1. Run all the export/update steps above as needed.
+2. =M-x stafforini-start-server= to verify locally.
+3. Run =scripts/deploy.sh= from the shell.
+
+** Rule of thumb
+
+- *Same page changed* → live reload works, no restart.
+- *Change affects other pages* (BibTeX, backlinks, citing-notes) → restart with =M-x stafforini-start-server=.
+
+* Commands
+
+| Command                              | Description                                            |
+|--------------------------------------+--------------------------------------------------------|
+| =M-x stafforini-prepare-notes=      | Add ox-hugo metadata to new org note files             |
+| =M-x stafforini-export-all-notes=   | Export all notes to Hugo markdown (batch mode)         |
+| =M-x stafforini-export-all-quotes=  | Export all quotes to Hugo markdown (batch mode)        |
+| =M-x stafforini-update-works=       | Generate/update work pages from BibTeX data            |
+| =M-x stafforini-update-backlinks=   | Regenerate backlink data from org-roam                 |
+| =M-x stafforini-process-pdfs=       | Strip annotations from PDFs and generate thumbnails    |
+| =M-x stafforini-start-server=       | Start Hugo dev server (always restarts for fresh data) |
+| =M-x stafforini-stop-server=        | Stop the Hugo dev server                               |
+| =M-x stafforini-full-rebuild=       | Run the full pipeline sequentially                     |
+| =M-x stafforini-insert-image=       | Insert an image with AI-generated filename and alt text |
