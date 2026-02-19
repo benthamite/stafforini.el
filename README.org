@@ -24,8 +24,7 @@ This package wraps the project's Python and shell build scripts, running them as
 ** Editing a BibTeX entry
 
 1. Edit the =.bib= file.
-2. =M-x stafforini-update-works=.
-3. =M-x stafforini-start-server= — *restart required* (Hugo doesn't re-render note pages that cite the changed work).
+2. =M-x stafforini-update-works= (auto-restarts the server on success).
 
 ** Adding a new org note
 
@@ -35,8 +34,7 @@ This package wraps the project's Python and shell build scripts, running them as
 
 ** Changed links between notes
 
-1. =M-x stafforini-update-backlinks=.
-2. =M-x stafforini-start-server= — *restart required* (backlinks data affects other pages).
+1. =M-x stafforini-update-backlinks= (auto-restarts the server on success).
 
 ** Bulk export (after migration or mass edit)
 

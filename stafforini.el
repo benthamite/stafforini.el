@@ -40,14 +40,32 @@
 
 ;;;; Internal helpers
 
-(defun stafforini--compile (command &optional name)
+(defvar-local stafforini--on-success nil
+  "Function to call when compilation finishes successfully.")
+
+(defun stafforini--maybe-run-on-success (_buf status)
+  "Run the on-success callback if compilation succeeded.
+STATUS is the compilation status string."
+  (when (and (string-match-p "finished" status)
+             stafforini--on-success)
+    (funcall stafforini--on-success)))
+
+(defun stafforini--compile (command &optional name on-success)
   "Run COMMAND asynchronously in a compilation buffer.
-NAME, if non-nil, is used as the compilation buffer name."
+NAME, if non-nil, is used as the compilation buffer name.
+ON-SUCCESS, if non-nil, is called with no arguments when
+compilation finishes successfully."
   (let ((default-directory stafforini-hugo-dir)
         (compilation-buffer-name-function
          (when name
            (lambda (_mode) name))))
-    (compile command)))
+    (let ((buf (compile command)))
+      (when on-success
+        (with-current-buffer buf
+          (setq stafforini--on-success on-success)
+          (add-hook 'compilation-finish-functions
+                    #'stafforini--maybe-run-on-success nil t)))
+      buf)))
 
 (defun stafforini--reindex-suffix ()
   "Return a shell command fragment that rebuilds the search index."
@@ -94,25 +112,27 @@ NAME, if non-nil, is used as the compilation buffer name."
 
 ;;;###autoload
 (defun stafforini-update-works ()
-  "Generate or update work pages from BibTeX data and rebuild the search index."
+  "Generate or update work pages from BibTeX data.
+Restarts the Hugo dev server on success."
   (interactive)
   (stafforini--compile
-   (concat
-    (format "python %s --skip-postprocess" (shell-quote-argument
-                                            (expand-file-name "generate-work-pages.py"
-                                                              stafforini-scripts-dir)))
-    (stafforini--reindex-suffix))
-   "*stafforini-update-works*"))
+   (format "python %s --skip-postprocess" (shell-quote-argument
+                                           (expand-file-name "generate-work-pages.py"
+                                                             stafforini-scripts-dir)))
+   "*stafforini-update-works*"
+   #'stafforini-start-server))
 
 ;;;###autoload
 (defun stafforini-update-backlinks ()
-  "Regenerate backlink data from the org-roam database."
+  "Regenerate backlink data from the org-roam database.
+Restarts the Hugo dev server on success."
   (interactive)
   (stafforini--compile
    (format "python %s" (shell-quote-argument
                         (expand-file-name "generate-backlinks.py"
                                           stafforini-scripts-dir)))
-   "*stafforini-update-backlinks*"))
+   "*stafforini-update-backlinks*"
+   #'stafforini-start-server))
 
 ;;;###autoload
 (defun stafforini-process-pdfs ()
