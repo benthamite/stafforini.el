@@ -126,14 +126,19 @@ NAME, if non-nil, is used as the compilation buffer name."
 
 ;;;###autoload
 (defun stafforini-start-server ()
-  "Start the Hugo dev server, or switch to its buffer if already running.
-The server runs in a dedicated `*hugo-server*' buffer."
+  "Start the Hugo dev server in a dedicated `*hugo-server*' buffer.
+Always kills any existing server first to ensure a fresh build.
+Hugo's incremental rebuild does not track cross-page shortcode
+dependencies, so reusing a running server after content changes
+causes stale data."
   (interactive)
   (let ((buf (get-buffer "*hugo-server*")))
-    (if (and buf (get-buffer-process buf))
-        (display-buffer buf)
-      (let ((default-directory stafforini-hugo-dir))
-        (async-shell-command "npm run dev" "*hugo-server*")))))
+    (when buf
+      (let ((proc (get-buffer-process buf)))
+        (when proc (delete-process proc)))
+      (kill-buffer buf)))
+  (let ((default-directory stafforini-hugo-dir))
+    (async-shell-command "npm run dev" "*hugo-server*")))
 
 ;;;###autoload
 (defun stafforini-stop-server ()
@@ -161,7 +166,8 @@ The server runs in a dedicated `*hugo-server*' buffer."
 (defun stafforini-full-rebuild ()
   "Run the full build pipeline sequentially.
 Steps: prepare notes, export notes, export quotes, update work
-pages, update backlinks, build search index."
+pages, update backlinks, generate citing-notes, inject lastmod,
+process PDFs, clean public, hugo build, pagefind index."
   (interactive)
   (let ((default-directory stafforini-hugo-dir))
     (stafforini--compile
@@ -184,8 +190,15 @@ pages, update backlinks, build search index."
                             (expand-file-name "generate-backlinks.py"
                                               stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
+                            (expand-file-name "generate-citing-notes.py"
+                                              stafforini-scripts-dir)))
+       (format "python %s" (shell-quote-argument
+                            (expand-file-name "inject-lastmod.py"
+                                              stafforini-scripts-dir)))
+       (format "python %s" (shell-quote-argument
                             (expand-file-name "process-pdfs.py"
                                               stafforini-scripts-dir)))
+       "rm -rf public"
        "hugo --minify"
        "npx pagefind --site public")
       " && ")
