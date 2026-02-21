@@ -3,7 +3,7 @@
 ;; Author: Pablo Stafforini
 ;; URL: https://github.com/benthamite/stafforini.el
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (paths "0.1") (gptel "0.9"))
+;; Package-Requires: ((emacs "29.1") (paths "0.1") (gptel "0.9") (org-roam "2.0"))
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -218,7 +218,7 @@ process PDFs, clean public, hugo build, pagefind index."
        (format "python %s" (shell-quote-argument
                             (expand-file-name "process-pdfs.py"
                                               stafforini-scripts-dir)))
-       "rm -rf public"
+       "trash public 2>/dev/null || true"
        "hugo --minify"
        "npx pagefind --site public")
       " && ")
@@ -389,6 +389,49 @@ a longer one for the alt text.  Both are presented for editing before use."
                              alt-text dest-file))
              (org-display-inline-images
               nil nil (line-beginning-position -2) (point)))))))))
+
+;;;; Topic insertion
+
+(declare-function org-roam-node-read "org-roam-node")
+(declare-function org-roam-node-id "org-roam-node")
+(declare-function org-roam-node-title "org-roam-node")
+
+;;;###autoload
+(defun stafforini-insert-topics ()
+  "Insert a Topics line with org-roam links at point.
+Prompts repeatedly for org-roam nodes.  Press \\`C-g' when done
+selecting; the collected topics are then inserted as a single
+\"Topics:\" line with middot-separated org-roam links, sorted
+alphabetically by title."
+  (interactive)
+  (require 'org-roam)
+  (let ((nodes '())
+        (seen-ids (make-hash-table :test #'equal)))
+    (condition-case nil
+        (while t
+          (let* ((prompt (if nodes
+                             (format "Select topic (%d selected, C-g to finish): "
+                                     (length nodes))
+                           "Select topic: "))
+                 (node (org-roam-node-read nil nil nil t prompt)))
+            (unless (gethash (org-roam-node-id node) seen-ids)
+              (puthash (org-roam-node-id node) t seen-ids)
+              (push node nodes))))
+      (quit nil))
+    (if (null nodes)
+        (message "No topics selected.")
+      (setq nodes (sort nodes
+                        (lambda (a b)
+                          (string< (downcase (org-roam-node-title a))
+                                   (downcase (org-roam-node-title b))))))
+      (let ((links (mapconcat
+                    (lambda (node)
+                      (format "[[id:%s][%s]]"
+                              (org-roam-node-id node)
+                              (org-roam-node-title node)))
+                    nodes
+                    " · ")))
+        (insert (format "\nTopics: %s\n" links))))))
 
 (provide 'stafforini)
 ;;; stafforini.el ends here
