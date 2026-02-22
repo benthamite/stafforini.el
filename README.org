@@ -38,16 +38,15 @@ This package wraps the project's Python and shell build scripts, running them as
 
 ** Bulk export (after migration or mass edit)
 
-1. =M-x stafforini-export-all-notes=.
-2. =M-x stafforini-export-all-quotes=.
-3. =M-x stafforini-update-works=.
-4. =M-x stafforini-start-server=.
+1. =M-x stafforini-export-all-notes= (also runs inject-lastmod, backlinks, citing-notes).
+2. =M-x stafforini-export-all-quotes= (also runs id-slug-map, work pages, topic pages).
+3. =M-x stafforini-start-server=.
 
 ** Deploy to production
 
 1. Run all the export/update steps above as needed.
 2. =M-x stafforini-start-server= to verify locally.
-3. Run =scripts/deploy.sh= from the shell.
+3. =M-x stafforini-deploy=.
 
 ** Rule of thumb
 
@@ -59,12 +58,14 @@ This package wraps the project's Python and shell build scripts, running them as
 | Command                              | Description                                            |
 |--------------------------------------+--------------------------------------------------------|
 | =M-x stafforini-prepare-notes=      | Add ox-hugo metadata to new org note files             |
-| =M-x stafforini-export-all-notes=   | Export all notes to Hugo markdown (batch mode)         |
-| =M-x stafforini-export-all-quotes=  | Export all quotes to Hugo markdown (batch mode)        |
+| =M-x stafforini-export-all-notes=   | Export notes + inject lastmod, backlinks, citing-notes |
+| =M-x stafforini-export-all-quotes=  | ID-slug map + export quotes + work pages, topic pages  |
 | =M-x stafforini-update-works=       | Generate/update work pages from BibTeX data            |
 | =M-x stafforini-update-backlinks=   | Regenerate backlink data from org-roam                 |
 | =M-x stafforini-process-pdfs=       | Strip annotations from PDFs and generate thumbnails    |
 | =M-x stafforini-start-server=       | Start Hugo dev server (always restarts for fresh data) |
 | =M-x stafforini-stop-server=        | Stop the Hugo dev server                               |
-| =M-x stafforini-full-rebuild=       | Run the full pipeline sequentially                     |
+| =M-x stafforini-rebuild-search-index= | Rebuild the Pagefind search index                    |
+| =M-x stafforini-full-rebuild=       | Run the full pipeline sequentially (7 steps)           |
+| =M-x stafforini-deploy=            | Build and deploy to Netlify                            |
 | =M-x stafforini-insert-image=       | Insert an image with AI-generated filename and alt text |
