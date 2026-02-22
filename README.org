@@ -9,49 +9,66 @@ This package wraps the project's Python and shell build scripts, running them as
 
 * Workflows
 
-** Editing a note
+There are two tiers of commands: *interactive export* for single-file edits during day-to-day work, and *batch commands* for bulk operations. You rarely need both at once.
+
+** Day-to-day editing
+
+For routine single-file changes, use ox-hugo's interactive export. Hugo's live reload picks up the new markdown automatically — no =stafforini.el= commands needed.
+
+*** Editing a note
 
 1. Edit the org file.
 2. Export with =C-c C-e H H= (current subtree).
-3. Hugo live reload picks it up — no restart needed.
+3. Hugo live reload picks it up.
 
-** Editing a quote
+*** Editing a quote
 
 1. Edit the =:public:= subtree in the bibliographic note.
 2. Export with =C-c C-e H A= (all subtrees).
-3. Hugo live reload picks it up — no restart needed.
+3. Hugo live reload picks it up.
 
-** Editing a BibTeX entry
+** Targeted updates
 
-1. Edit the =.bib= file.
-2. =M-x stafforini-update-works= (auto-restarts the server on success).
+Use these when you've changed a specific upstream source /without/ editing org content. Each command updates only what it needs to.
 
-** Adding a new org note
+- *Changed a BibTeX entry* → =M-x stafforini-update-works=. Regenerates work pages from BibTeX data. Auto-restarts the server (Hugo doesn't track shortcode cross-references, so live reload won't propagate BibTeX changes to citing pages).
 
-1. Create the org file.
-2. =M-x stafforini-prepare-notes= (adds ox-hugo metadata).
-3. Export with =C-c C-e H H=.
+- *Changed links between notes* → =M-x stafforini-update-backlinks=. Regenerates backlink data from the org-roam database. Auto-restarts the server.
 
-** Changed links between notes
+- *Created a new org note file* → =M-x stafforini-prepare-notes=. Adds ox-hugo metadata (=:EXPORT_FILE_NAME:=, =:EXPORT_HUGO_SECTION:=, etc.) to new files that don't have it yet. Run /before/ exporting.
 
-1. =M-x stafforini-update-backlinks= (auto-restarts the server on success).
+- *Added or changed PDFs* → =M-x stafforini-process-pdfs=. Strips annotations and generates first-page thumbnails.
 
-** Bulk export (after migration or mass edit)
+- *Search index out of date* → =M-x stafforini-rebuild-search-index=. Rebuilds the Pagefind index. Useful after content changes when you want to test search locally without a full rebuild.
 
-1. =M-x stafforini-export-all-notes= (also runs inject-lastmod, backlinks, citing-notes).
-2. =M-x stafforini-export-all-quotes= (also runs id-slug-map, work pages, topic pages).
-3. =M-x stafforini-start-server=.
+** Batch export
 
-** Deploy to production
+Use these after mass edits, migrations, or whenever you want to ensure everything is in sync. Each export command handles its full pipeline automatically — no need to run intermediate scripts.
 
-1. Run all the export/update steps above as needed.
+- =M-x stafforini-export-all-notes= — exports all org notes, then runs inject-lastmod, generate-backlinks, and generate-citing-notes.
+- =M-x stafforini-export-all-quotes= — generates the ID→slug map, exports all org quotes, then generates work pages and topic pages.
+
+After batch exporting, restart the server with =M-x stafforini-start-server= to pick up all changes.
+
+** Full rebuild
+
+=M-x stafforini-full-rebuild= — runs the entire pipeline from scratch (7 steps: prepare notes → export notes → export quotes → process PDFs → clean public → hugo build → pagefind index). Use after major structural changes, or as a final check before deploying. Overkill for day-to-day work.
+
+** Deploying
+
+1. Run the needed export/update steps.
 2. =M-x stafforini-start-server= to verify locally.
 3. =M-x stafforini-deploy=.
 
-** Rule of thumb
+** Server management
 
-- *Same page changed* → live reload works, no restart.
-- *Change affects other pages* (BibTeX, backlinks, citing-notes) → restart with =M-x stafforini-start-server=.
+- =M-x stafforini-start-server= — starts (or restarts) the Hugo dev server. Always kills any existing server first to ensure a fresh build.
+- =M-x stafforini-stop-server= — stops the server.
+
+*** When to restart the server
+
+- *Same page changed* → live reload works, no restart needed.
+- *Change affects other pages* (BibTeX, backlinks, work pages, citing-notes) → restart with =M-x stafforini-start-server=. The standalone =update-works= and =update-backlinks= commands do this automatically.
 
 * Commands
 
