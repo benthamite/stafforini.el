@@ -144,6 +144,62 @@ Restarts the Hugo dev server on success."
    "*stafforini-process-pdfs*"))
 
 ;;;###autoload
+(defun stafforini-generate-id-slug-map ()
+  "Generate the org-id to Hugo slug JSON mapping.
+Writes /tmp/id-slug-map.json, used by quote export to resolve
+topic links."
+  (interactive)
+  (stafforini--compile
+   (format "python %s" (shell-quote-argument
+                        (expand-file-name "generate-id-slug-map.py"
+                                          stafforini-scripts-dir)))
+   "*stafforini-id-slug-map*"))
+
+;;;###autoload
+(defun stafforini-generate-topic-pages ()
+  "Generate Hugo content pages for org-roam topic stubs.
+Restarts the Hugo dev server on success."
+  (interactive)
+  (stafforini--compile
+   (format "python %s" (shell-quote-argument
+                        (expand-file-name "generate-topic-pages.py"
+                                          stafforini-scripts-dir)))
+   "*stafforini-topic-pages*"
+   #'stafforini-start-server))
+
+;;;###autoload
+(defun stafforini-generate-citing-notes ()
+  "Generate the citing-notes reverse index from cite shortcodes.
+Restarts the Hugo dev server on success."
+  (interactive)
+  (stafforini--compile
+   (format "python %s" (shell-quote-argument
+                        (expand-file-name "generate-citing-notes.py"
+                                          stafforini-scripts-dir)))
+   "*stafforini-citing-notes*"
+   #'stafforini-start-server))
+
+;;;###autoload
+(defun stafforini-inject-lastmod ()
+  "Inject lastmod dates from org file modification times into Hugo markdown."
+  (interactive)
+  (stafforini--compile
+   (format "python %s" (shell-quote-argument
+                        (expand-file-name "inject-lastmod.py"
+                                          stafforini-scripts-dir)))
+   "*stafforini-inject-lastmod*"))
+
+;;;###autoload
+(defun stafforini-deploy ()
+  "Build the Hugo site and deploy it to Netlify."
+  (interactive)
+  (stafforini--compile
+   (format "bash %s" (shell-quote-argument
+                      (expand-file-name "deploy.sh"
+                                        stafforini-scripts-dir)))
+   "*stafforini-deploy*"))
+
+;;;###autoload
 (defun stafforini-start-server ()
   "Start the Hugo dev server in a dedicated `*hugo-server*' buffer.
 Always kills any existing server first to ensure a fresh build.
@@ -184,9 +240,10 @@ causes stale data."
 ;;;###autoload
 (defun stafforini-full-rebuild ()
   "Run the full build pipeline sequentially.
-Steps: prepare notes, export notes (full), export quotes (full),
-update work pages, update backlinks, generate citing-notes,
-process PDFs, clean public, hugo build, pagefind index."
+Steps: prepare notes, generate id-slug map, export notes (full),
+export quotes (full), update work pages, generate topic pages,
+update backlinks, generate citing-notes, inject lastmod, process PDFs,
+clean public, hugo build, pagefind index."
   (interactive)
   (let ((default-directory stafforini-hugo-dir))
     (stafforini--compile
@@ -195,6 +252,9 @@ process PDFs, clean public, hugo build, pagefind index."
       (list
        (format "python %s" (shell-quote-argument
                             (expand-file-name "prepare-org-notes.py"
+                                              stafforini-scripts-dir)))
+       (format "python %s" (shell-quote-argument
+                            (expand-file-name "generate-id-slug-map.py"
                                               stafforini-scripts-dir)))
        (format "bash %s --full" (shell-quote-argument
                                  (expand-file-name "export-notes.sh"
@@ -206,10 +266,16 @@ process PDFs, clean public, hugo build, pagefind index."
                             (expand-file-name "generate-work-pages.py"
                                               stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
+                            (expand-file-name "generate-topic-pages.py"
+                                              stafforini-scripts-dir)))
+       (format "python %s" (shell-quote-argument
                             (expand-file-name "generate-backlinks.py"
                                               stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
                             (expand-file-name "generate-citing-notes.py"
+                                              stafforini-scripts-dir)))
+       (format "python %s" (shell-quote-argument
+                            (expand-file-name "inject-lastmod.py"
                                               stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
                             (expand-file-name "process-pdfs.py"
@@ -228,13 +294,18 @@ process PDFs, clean public, hugo build, pagefind index."
   [["Export (org→markdown)"
     ("n" "Export notes" stafforini-export-all-notes)
     ("q" "Export quotes" stafforini-export-all-quotes)]
-   ["Generate (non org data)"
+   ["Generate"
     ("p" "Prepare notes" stafforini-prepare-notes)
+    ("m" "ID→slug map" stafforini-generate-id-slug-map)
     ("w" "Update works" stafforini-update-works)
+    ("t" "Topic pages" stafforini-generate-topic-pages)
     ("b" "Update backlinks" stafforini-update-backlinks)
+    ("c" "Citing notes" stafforini-generate-citing-notes)
+    ("l" "Inject lastmod" stafforini-inject-lastmod)
     ("d" "Process PDFs" stafforini-process-pdfs)]
-   ["Build (full pipeline)"
-    ("R" "Full rebuild" stafforini-full-rebuild)]
+   ["Build & deploy"
+    ("R" "Full rebuild" stafforini-full-rebuild)
+    ("D" "Deploy to Netlify" stafforini-deploy)]
    ["Server"
     ("s" "Start server" stafforini-start-server)
     ("k" "Stop server" stafforini-stop-server)]])
