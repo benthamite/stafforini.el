@@ -143,7 +143,6 @@ Restarts the Hugo dev server on success."
                                           stafforini-scripts-dir)))
    "*stafforini-process-pdfs*"))
 
-;;;###autoload
 (defun stafforini-generate-id-slug-map ()
   "Generate the org-id to Hugo slug JSON mapping.
 Writes /tmp/id-slug-map.json, used by quote export to resolve
@@ -155,31 +154,24 @@ topic links."
                                           stafforini-scripts-dir)))
    "*stafforini-id-slug-map*"))
 
-;;;###autoload
 (defun stafforini-generate-topic-pages ()
-  "Generate Hugo content pages for org-roam topic stubs.
-Restarts the Hugo dev server on success."
+  "Generate Hugo content pages for org-roam topic stubs."
   (interactive)
   (stafforini--compile
    (format "python %s" (shell-quote-argument
                         (expand-file-name "generate-topic-pages.py"
                                           stafforini-scripts-dir)))
-   "*stafforini-topic-pages*"
-   #'stafforini-start-server))
+   "*stafforini-topic-pages*"))
 
-;;;###autoload
 (defun stafforini-generate-citing-notes ()
-  "Generate the citing-notes reverse index from cite shortcodes.
-Restarts the Hugo dev server on success."
+  "Generate the citing-notes reverse index from cite shortcodes."
   (interactive)
   (stafforini--compile
    (format "python %s" (shell-quote-argument
                         (expand-file-name "generate-citing-notes.py"
                                           stafforini-scripts-dir)))
-   "*stafforini-citing-notes*"
-   #'stafforini-start-server))
+   "*stafforini-citing-notes*"))
 
-;;;###autoload
 (defun stafforini-inject-lastmod ()
   "Inject lastmod dates from org file modification times into Hugo markdown."
   (interactive)
@@ -240,10 +232,10 @@ causes stale data."
 ;;;###autoload
 (defun stafforini-full-rebuild ()
   "Run the full build pipeline sequentially.
-Steps: prepare notes, generate id-slug map, export notes (full),
-export quotes (full), update work pages, generate topic pages,
-update backlinks, generate citing-notes, inject lastmod, process PDFs,
-clean public, hugo build, pagefind index."
+Steps: prepare notes, export notes (full), export quotes (full),
+process PDFs, clean public, hugo build, pagefind index.
+The export scripts handle intermediate steps (inject-lastmod,
+backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
   (interactive)
   (let ((default-directory stafforini-hugo-dir))
     (stafforini--compile
@@ -253,30 +245,12 @@ clean public, hugo build, pagefind index."
        (format "python %s" (shell-quote-argument
                             (expand-file-name "prepare-org-notes.py"
                                               stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "generate-id-slug-map.py"
-                                              stafforini-scripts-dir)))
        (format "bash %s --full" (shell-quote-argument
                                  (expand-file-name "export-notes.sh"
                                                    stafforini-scripts-dir)))
        (format "bash %s --full" (shell-quote-argument
                                  (expand-file-name "export-quotes.sh"
                                                    stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "generate-work-pages.py"
-                                              stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "generate-topic-pages.py"
-                                              stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "generate-backlinks.py"
-                                              stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "generate-citing-notes.py"
-                                              stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "inject-lastmod.py"
-                                              stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
                             (expand-file-name "process-pdfs.py"
                                               stafforini-scripts-dir)))
@@ -291,20 +265,17 @@ clean public, hugo build, pagefind index."
 ;;;###autoload (autoload 'stafforini-menu "stafforini" nil t)
 (transient-define-prefix stafforini-menu ()
   "Stafforini.com build commands."
-  [["Export (org→markdown)"
+  [["Export"
     ("n" "Export notes" stafforini-export-all-notes)
     ("q" "Export quotes" stafforini-export-all-quotes)]
    ["Generate"
     ("p" "Prepare notes" stafforini-prepare-notes)
-    ("m" "ID→slug map" stafforini-generate-id-slug-map)
     ("w" "Update works" stafforini-update-works)
-    ("t" "Topic pages" stafforini-generate-topic-pages)
     ("b" "Update backlinks" stafforini-update-backlinks)
-    ("c" "Citing notes" stafforini-generate-citing-notes)
-    ("l" "Inject lastmod" stafforini-inject-lastmod)
     ("d" "Process PDFs" stafforini-process-pdfs)]
    ["Build & deploy"
     ("R" "Full rebuild" stafforini-full-rebuild)
+    ("i" "Rebuild search index" stafforini-rebuild-search-index)
     ("D" "Deploy to Netlify" stafforini-deploy)]
    ["Server"
     ("s" "Start server" stafforini-start-server)
