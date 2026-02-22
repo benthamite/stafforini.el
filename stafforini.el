@@ -3,7 +3,7 @@
 ;; Author: Pablo Stafforini
 ;; URL: https://github.com/benthamite/stafforini.el
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (paths "0.1") (gptel "0.9") (org-roam "2.0"))
+;; Package-Requires: ((emacs "29.1") (paths "0.1") (gptel "0.9") (org-roam "2.0") (transient "0.4"))
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -19,6 +19,7 @@
 
 (require 'compile)
 (require 'paths)
+(require 'transient)
 
 ;;;; Custom variables
 
@@ -91,11 +92,9 @@ compilation finishes successfully."
   "Export all org notes to Hugo markdown and rebuild the search index."
   (interactive)
   (stafforini--compile
-   (concat
-    (format "emacs --batch -l %s" (shell-quote-argument
-                                   (expand-file-name "export-notes.el"
-                                                     stafforini-scripts-dir)))
-    (stafforini--reindex-suffix))
+   (format "bash %s" (shell-quote-argument
+                      (expand-file-name "export-notes.sh"
+                                        stafforini-scripts-dir)))
    "*stafforini-export-notes*"))
 
 ;;;###autoload
@@ -185,8 +184,8 @@ causes stale data."
 ;;;###autoload
 (defun stafforini-full-rebuild ()
   "Run the full build pipeline sequentially.
-Steps: prepare notes, export notes, export quotes, update work
-pages, update backlinks, generate citing-notes, inject lastmod,
+Steps: prepare notes, export notes (full), export quotes (full),
+update work pages, update backlinks, generate citing-notes,
 process PDFs, clean public, hugo build, pagefind index."
   (interactive)
   (let ((default-directory stafforini-hugo-dir))
@@ -197,12 +196,12 @@ process PDFs, clean public, hugo build, pagefind index."
        (format "python %s" (shell-quote-argument
                             (expand-file-name "prepare-org-notes.py"
                                               stafforini-scripts-dir)))
-       (format "emacs --batch -l %s" (shell-quote-argument
-                                      (expand-file-name "export-notes.el"
-                                                        stafforini-scripts-dir)))
-       (format "bash %s" (shell-quote-argument
-                          (expand-file-name "export-quotes.sh"
-                                            stafforini-scripts-dir)))
+       (format "bash %s --full" (shell-quote-argument
+                                 (expand-file-name "export-notes.sh"
+                                                   stafforini-scripts-dir)))
+       (format "bash %s --full" (shell-quote-argument
+                                 (expand-file-name "export-quotes.sh"
+                                                   stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
                             (expand-file-name "generate-work-pages.py"
                                               stafforini-scripts-dir)))
@@ -213,9 +212,6 @@ process PDFs, clean public, hugo build, pagefind index."
                             (expand-file-name "generate-citing-notes.py"
                                               stafforini-scripts-dir)))
        (format "python %s" (shell-quote-argument
-                            (expand-file-name "inject-lastmod.py"
-                                              stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
                             (expand-file-name "process-pdfs.py"
                                               stafforini-scripts-dir)))
        "trash public 2>/dev/null || true"
@@ -223,6 +219,25 @@ process PDFs, clean public, hugo build, pagefind index."
        "npx pagefind --site public")
       " && ")
      "*stafforini-full-rebuild*")))
+
+;;;; Transient menu
+
+;;;###autoload (autoload 'stafforini-menu "stafforini" nil t)
+(transient-define-prefix stafforini-menu ()
+  "Stafforini.com build commands."
+  [["Export (org→markdown)"
+    ("n" "Export notes" stafforini-export-all-notes)
+    ("q" "Export quotes" stafforini-export-all-quotes)]
+   ["Generate (non org data)"
+    ("p" "Prepare notes" stafforini-prepare-notes)
+    ("w" "Update works" stafforini-update-works)
+    ("b" "Update backlinks" stafforini-update-backlinks)
+    ("d" "Process PDFs" stafforini-process-pdfs)]
+   ["Build (full pipeline)"
+    ("R" "Full rebuild" stafforini-full-rebuild)]
+   ["Server"
+    ("s" "Start server" stafforini-start-server)
+    ("k" "Stop server" stafforini-stop-server)]])
 
 ;;;; Image insertion
 
