@@ -75,6 +75,16 @@ compilation finishes successfully."
            (expand-file-name "build-search-index.sh"
                              stafforini-scripts-dir))))
 
+;;;; Export link handler
+
+;; Load the shared export helpers (dotfiles link exporter, relref fixer)
+;; from the Hugo project's scripts directory.  In batch exports these are
+;; loaded directly by export-notes.el / export-quotes.el via export-common.el;
+;; here we load the same file so interactive exports get the same behaviour.
+(let ((export-common (file-name-concat stafforini-scripts-dir "export-common.el")))
+  (when (file-exists-p export-common)
+    (load export-common)))
+
 ;;;; Commands
 
 ;;;###autoload
@@ -98,14 +108,16 @@ compilation finishes successfully."
    "*stafforini-export-notes*"))
 
 ;;;###autoload
-(defun stafforini-export-all-quotes ()
-  "Export all org quotes to Hugo markdown and rebuild the search index."
-  (interactive)
+(defun stafforini-export-all-quotes (&optional full)
+  "Export all org quotes to Hugo markdown and rebuild the search index.
+With prefix argument FULL, force a complete re-export ignoring the manifest."
+  (interactive "P")
   (stafforini--compile
    (concat
-    (format "bash %s" (shell-quote-argument
-                       (expand-file-name "export-quotes.sh"
-                                         stafforini-scripts-dir)))
+    (format "bash %s%s" (shell-quote-argument
+                         (expand-file-name "export-quotes.sh"
+                                           stafforini-scripts-dir))
+            (if full " --full" ""))
     (stafforini--reindex-suffix))
    "*stafforini-export-quotes*"))
 
