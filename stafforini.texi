@@ -1,0 +1,388 @@
+\input texinfo    @c -*- texinfo -*-
+@c %**start of header
+@setfilename stafforini.info
+@settitle stafforini: Build commands for stafforini.com
+@documentencoding UTF-8
+@documentlanguage en
+@c %**end of header
+
+@dircategory Emacs misc features
+@direntry
+* Stafforini: (stafforini). Build commands for stafforini.com.
+@end direntry
+
+@finalout
+@titlepage
+@author Pablo Stafforini (@email{pablo@@stafforini.com})
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top stafforini: Build commands for stafforini.com
+
+This manual describes the features and customization options for the Emacs Lisp file @samp{stafforini.el}. @*
+
+@end ifnottex
+
+@menu
+* Overview::
+* User options::
+* Commands::
+* Transient menu::
+* Indices::
+
+@detailmenu
+--- The Detailed Node Listing ---
+
+User options
+
+* Directory configuration::
+* AI image description::
+
+Commands
+
+* Exporting content::
+* Preparing and generating content::
+* Auxiliary generation commands::
+* Build and deploy::
+* Server management::
+* Inserting images::
+* Inserting topics::
+
+Indices
+
+* Function index::
+* Variable index::
+
+@end detailmenu
+@end menu
+
+@node Overview
+@chapter Overview
+
+@samp{stafforini.el} provides Emacs commands for building and previewing the @*
+@uref{https://stafforini.com, stafforini.com} Hugo site.  It is a companion package to the @*
+@uref{https://github.com/benthamite/stafforini.com, stafforini.com repository}, wrapping the project's Python and shell @*
+build scripts so they can be run asynchronously from within Emacs via @*
+@code{compile}.  Output appears in a standard compilation buffer with proper @*
+error highlighting and navigation. @*
+
+The site's content originates from two sources: Org notes (exported via @*
+ox-hugo) and quotes extracted from bibliographic notes.  A collection of @*
+Python and shell scripts in the Hugo project's @samp{scripts/} directory @*
+handle the various transformation steps---preparing metadata, exporting @*
+Org files to Hugo markdown, generating work pages from Bib@TeX{} data, @*
+regenerating backlink data from the org-roam database, and more. @*
+@samp{stafforini.el} provides an Emacs command for each of these scripts, as @*
+well as higher-level commands that chain them into complete workflows. @*
+
+The package also includes commands for managing the Hugo development @*
+server, deploying the built site to Netlify, inserting images with @*
+AI-generated filenames and alt text, and inserting topic links from @*
+org-roam. @*
+
+All build commands are accessible through a transient menu @*
+(@ref{Transient menu}). @*
+
+The package depends on @samp{paths} for directory configuration, @samp{gptel} for @*
+AI-powered image description, @samp{org-roam} for topic insertion, and @*
+@samp{transient} for the command menu. @*
+
+@node User options
+@chapter User options
+
+@menu
+* Directory configuration::
+* AI image description::
+@end menu
+
+@node Directory configuration
+@section Directory configuration
+
+@vindex stafforini-hugo-dir
+@vindex stafforini-scripts-dir
+The user option @code{stafforini-hugo-dir} specifies the root directory of @*
+the stafforini.com Hugo project.  Every build command uses this as its @*
+@code{default-directory}, so shell scripts resolve paths relative to the Hugo @*
+project root.  The default value is derived from @*
+@code{paths-dir-personal-repos} by appending @samp{stafforini.com/}.  You would @*
+change this if your Hugo project lives at a different path. @*
+
+The user option @code{stafforini-scripts-dir} specifies the directory @*
+containing the Python and shell build scripts.  Its default value is the @*
+@samp{scripts/} subdirectory of @code{stafforini-hugo-dir}.  There is normally no @*
+reason to change this unless you have moved the scripts to a @*
+non-standard location. @*
+
+Both options accept a directory path as their value. @*
+
+@node AI image description
+@section AI image description
+
+@vindex stafforini-image-description-model
+The user option @code{stafforini-image-description-model} controls which AI @*
+model is used when @code{stafforini-insert-image} generates a descriptive @*
+filename and alt text for an image (@ref{Inserting images}). @*
+
+The value is a cons cell whose @code{car} is a backend name (a string, such @*
+as @samp{"Gemini"}) and whose @code{cdr} is a model symbol (such as @*
+@code{gemini-flash-latest}).  The available backends and models are those @*
+configured in your @samp{gptel} setup. @*
+
+When set to @code{nil}, the command uses whatever model is currently active in @*
+@samp{gptel}.  The default value is @samp{("Gemini" . gemini-flash-latest)}, @*
+which provides fast and inexpensive image descriptions.  You might @*
+change this to a more capable vision model if you find the default @*
+descriptions insufficiently detailed. @*
+
+@node Commands
+@chapter Commands
+
+@menu
+* Exporting content::
+* Preparing and generating content::
+* Auxiliary generation commands::
+* Build and deploy::
+* Server management::
+* Inserting images::
+* Inserting topics::
+@end menu
+
+@node Exporting content
+@section Exporting content
+
+@findex stafforini-export-all-notes
+@findex stafforini-export-all-quotes
+The export commands handle the bulk conversion of Org source files into @*
+Hugo markdown.  Each export command runs the full pipeline for its @*
+content type, including intermediate steps, so you do not need to invoke @*
+helper scripts manually. @*
+
+The command @code{stafforini-export-all-notes} exports all Org notes to Hugo @*
+markdown and rebuilds the search index.  Internally it runs @*
+@samp{export-notes.sh}, which handles inject-lastmod, backlink generation, @*
+and citing-notes generation as part of its pipeline.  Use this after @*
+making mass edits to note files or when you want to ensure all notes are @*
+in sync. @*
+
+The command @code{stafforini-export-all-quotes} exports all Org quotes to @*
+Hugo markdown and rebuilds the search index.  Internally it runs @*
+@samp{export-quotes.sh}, which handles the ID-to-slug map, work page @*
+generation, and topic page generation.  With a prefix argument @*
+(@samp{C-u}), the command forces a complete re-export that ignores the @*
+manifest, re-exporting every quote rather than only those that have @*
+changed.  Use the prefix argument after structural changes to the export @*
+pipeline or when the manifest may be stale. @*
+
+After batch exporting, restart the server with @*
+@code{stafforini-start-server} to pick up all changes @*
+(@ref{Server management}). @*
+
+@node Preparing and generating content
+@section Preparing and generating content
+
+@findex stafforini-prepare-notes
+@findex stafforini-update-works
+@findex stafforini-update-backlinks
+@findex stafforini-process-pdfs
+These commands handle targeted updates to specific parts of the site's @*
+content pipeline.  Use them when an upstream source has changed without @*
+an accompanying Org edit. @*
+
+The command @code{stafforini-prepare-notes} adds ox-hugo metadata @*
+(@samp{:EXPORT_FILE_NAME:}, @samp{:EXPORT_HUGO_SECTION:}, and related properties) @*
+to new Org note files that do not yet have it.  Run this after creating @*
+new note files and before exporting them.  Internally it runs @*
+@samp{prepare-org-notes.py}. @*
+
+The command @code{stafforini-update-works} generates or updates Hugo work @*
+pages from Bib@TeX{} data.  Use this after modifying a Bib@TeX{} entry when @*
+you want the corresponding work page to reflect the change.  On @*
+successful completion, the command automatically restarts the Hugo @*
+development server via @code{stafforini-start-server}, because Hugo's @*
+incremental rebuild does not track cross-page shortcode dependencies and @*
+would otherwise serve stale data.  Internally it runs @*
+@samp{generate-work-pages.py} with the @samp{--skip-postprocess} flag. @*
+
+The command @code{stafforini-update-backlinks} regenerates backlink data from @*
+the org-roam database.  Use this after changing links between notes so @*
+that the site's backlink sections stay current.  Like @*
+@code{stafforini-update-works}, it automatically restarts the server on @*
+success.  Internally it runs @samp{generate-backlinks.py}. @*
+
+The command @code{stafforini-process-pdfs} strips annotations from PDF files @*
+and generates first-page thumbnails.  Use this after adding or modifying @*
+PDFs in the project.  Internally it runs @samp{process-pdfs.py}. @*
+
+@node Auxiliary generation commands
+@section Auxiliary generation commands
+
+@findex stafforini-generate-id-slug-map
+@findex stafforini-generate-topic-pages
+@findex stafforini-generate-citing-notes
+@findex stafforini-inject-lastmod
+These commands run individual generation steps that are normally handled @*
+automatically by the batch export pipelines @*
+(@ref{Exporting content}).  They are useful for @*
+debugging or when you need to regenerate a specific artifact without @*
+running a full export. @*
+
+The command @code{stafforini-generate-id-slug-map} generates the Org-ID to @*
+Hugo slug JSON mapping and writes it to @samp{/tmp/id-slug-map.json}.  The @*
+quote export pipeline uses this mapping to resolve topic links. @*
+Internally it runs @samp{generate-id-slug-map.py}. @*
+
+The command @code{stafforini-generate-topic-pages} generates Hugo content @*
+pages for org-roam topic stubs.  Internally it runs @*
+@samp{generate-topic-pages.py}. @*
+
+The command @code{stafforini-generate-citing-notes} generates the @*
+citing-notes reverse index from cite shortcodes in the Hugo content. @*
+Internally it runs @samp{generate-citing-notes.py}. @*
+
+The command @code{stafforini-inject-lastmod} injects @code{lastmod} dates into @*
+Hugo markdown front matter, derived from the modification times of the @*
+corresponding Org source files.  Internally it runs @samp{inject-lastmod.py}. @*
+
+@node Build and deploy
+@section Build and deploy
+
+@findex stafforini-full-rebuild
+@findex stafforini-rebuild-search-index
+@findex stafforini-deploy
+The command @code{stafforini-full-rebuild} runs the entire build pipeline @*
+sequentially in a single compilation buffer.  The seven steps are: @*
+prepare notes, export notes (full), export quotes (full), process PDFs, @*
+clean the @samp{public/} directory, run @samp{hugo --minify}, and build the @*
+Pagefind search index.  The export scripts handle their own intermediate @*
+steps (inject-lastmod, backlinks, citing-notes, ID-slug map, work @*
+pages, topic pages), so every artifact is regenerated from scratch.  Use @*
+this after major structural changes or as a final check before @*
+deploying.  It is overkill for day-to-day work. @*
+
+The command @code{stafforini-rebuild-search-index} rebuilds the Pagefind @*
+search index for local development.  This is useful after content @*
+changes when you want to test search locally without running a full @*
+rebuild.  Internally it runs @samp{build-search-index.sh}. @*
+
+The command @code{stafforini-deploy} builds the Hugo site and deploys it to @*
+Netlify.  Run the needed export and update steps first, verify locally @*
+with @code{stafforini-start-server}, and then deploy.  Internally it runs @*
+@samp{deploy.sh}. @*
+
+@node Server management
+@section Server management
+
+@findex stafforini-start-server
+@findex stafforini-stop-server
+The command @code{stafforini-start-server} starts the Hugo development server @*
+in a dedicated @samp{*hugo-server*} buffer by running @samp{npm run dev}.  It @*
+always kills any existing server process first to ensure a fresh build. @*
+This is intentional: Hugo's incremental rebuild does not track @*
+cross-page shortcode dependencies, so reusing a running server after @*
+content changes to work pages, backlinks, or other cross-referenced data @*
+would cause stale output.  Several commands, such as @*
+@code{stafforini-update-works} and @code{stafforini-update-backlinks}, call this @*
+command automatically on success (@ref{Preparing and generating content}). @*
+
+The command @code{stafforini-stop-server} stops the Hugo development server @*
+by sending an interrupt signal to the @samp{*hugo-server*} buffer process. @*
+If no server is running, it displays a message to that effect. @*
+
+As a rule of thumb: if you edited a single page, Hugo's live reload @*
+handles it automatically.  If your change affects other pages (Bib@TeX{} @*
+data, backlinks, work pages, citing-notes), restart the server. @*
+
+@node Inserting images
+@section Inserting images
+
+@findex stafforini-insert-image
+The command @code{stafforini-insert-image} inserts an image at point in an @*
+Org buffer, storing it in a structured location with an AI-generated @*
+descriptive filename.  It must be invoked from an @code{org-mode} buffer. @*
+
+When called interactively without an argument, the command prompts you @*
+to choose between pasting an image from the system clipboard or @*
+selecting a file.  Clipboard support requires the @samp{pngpaste} utility @*
+(installable via @samp{brew install pngpaste} on macOS).  When called from @*
+Lisp with a FILE argument, it uses that file directly. @*
+
+The command sends the image to an AI model (controlled by @*
+@code{stafforini-image-description-model}; see @ref{AI image description}) @*
+to generate two descriptions: a short one (2--5 words) used as the @*
+filename and a longer one (1--2 sentences) used as alt text.  Both @*
+descriptions are presented in the minibuffer for editing before use. @*
+
+The image is copied to a subdirectory of @code{paths-dir-org-images} named @*
+after the current article's slug (derived from the buffer's file name, @*
+which matches the @samp{:EXPORT_FILE_NAME:} property used by ox-hugo).  If a @*
+file with the generated name already exists, a numeric suffix is @*
+appended to avoid collisions.  The command then inserts an @*
+@samp{#+attr_html: :alt} directive and an Org file link at point, and @*
+refreshes inline image display in the surrounding region. @*
+
+If the image was pasted from the clipboard, the temporary file is @*
+deleted after copying. @*
+
+@node Inserting topics
+@section Inserting topics
+
+@findex stafforini-insert-topics
+The command @code{stafforini-insert-topics} inserts a ``Topics:'' line at point @*
+containing org-roam links.  It prompts repeatedly for org-roam nodes @*
+using @code{org-roam-node-read}; press @samp{C-g} when you are done selecting. @*
+Duplicate selections (by Org ID) are silently ignored. @*
+
+The collected topics are sorted alphabetically by title and inserted as @*
+a single line with middot-separated (@code{·}) org-roam ID links in the @*
+format @samp{Topics: [[id:...][Title]] · [[id:...][Title]]}.  If no topics @*
+are selected, the command displays a message and inserts nothing. @*
+
+@node Transient menu
+@chapter Transient menu
+
+@findex stafforini-menu
+The command @code{stafforini-menu} opens a transient menu that provides @*
+quick access to all build commands.  The menu is organized into four @*
+columns: @*
+
+@itemize
+@item
+@strong{Export}: @code{stafforini-export-all-notes} (@samp{n}) and @*
+@code{stafforini-export-all-quotes} (@samp{q}). @*
+@item
+@strong{Generate}: @code{stafforini-prepare-notes} (@samp{p}), @*
+@code{stafforini-update-works} (@samp{w}), @code{stafforini-update-backlinks} (@samp{b}), @*
+and @code{stafforini-process-pdfs} (@samp{d}). @*
+@item
+@strong{Build & deploy}: @code{stafforini-full-rebuild} (@samp{R}), @*
+@code{stafforini-rebuild-search-index} (@samp{i}), and @code{stafforini-deploy} (@samp{D}). @*
+@item
+@strong{Server}: @code{stafforini-start-server} (@samp{s}) and @*
+@code{stafforini-stop-server} (@samp{k}). @*
+@end itemize
+
+Bind @code{stafforini-menu} to a convenient key to access the full set of @*
+commands without memorizing individual bindings. @*
+
+@node Indices
+@chapter Indices
+
+@menu
+* Function index::
+* Variable index::
+@end menu
+
+@node Function index
+@section Function index
+
+@printindex fn
+
+@node Variable index
+@section Variable index
+
+@printindex vr
+
+@bye
