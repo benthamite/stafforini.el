@@ -1,0 +1,343 @@
+#+title: stafforini: Build commands for stafforini.com
+#+author: Pablo Stafforini
+#+email: pablo@stafforini.com
+#+language: en
+#+options: ':t toc:t author:t email:t num:t
+#+startup: content
+#+export_file_name: stafforini.info
+#+texinfo_filename: stafforini.info
+#+texinfo_dir_category: Emacs misc features
+#+texinfo_dir_title: Stafforini: (stafforini)
+#+texinfo_dir_desc: Build commands for stafforini.com
+
+This manual describes the features and customization options for the Emacs Lisp file =stafforini.el=.
+
+* Overview
+:PROPERTIES:
+:CUSTOM_ID: h:overview
+:END:
+
+=stafforini.el= provides Emacs commands for building and previewing the
+[[https://stafforini.com][stafforini.com]] Hugo site.  It is a companion package to the
+[[https://github.com/benthamite/stafforini.com][stafforini.com repository]], wrapping the project's Python and shell
+build scripts so they can be run asynchronously from within Emacs via
+~compile~.  Output appears in a standard compilation buffer with proper
+error highlighting and navigation.
+
+The site's content originates from two sources: Org notes (exported via
+ox-hugo) and quotes extracted from bibliographic notes.  A collection of
+Python and shell scripts in the Hugo project's =scripts/= directory
+handle the various transformation steps---preparing metadata, exporting
+Org files to Hugo markdown, generating work pages from BibTeX data,
+regenerating backlink data from the org-roam database, and more.
+=stafforini.el= provides an Emacs command for each of these scripts, as
+well as higher-level commands that chain them into complete workflows.
+
+The package also includes commands for managing the Hugo development
+server, deploying the built site to Netlify, inserting images with
+AI-generated filenames and alt text, and inserting topic links from
+org-roam.
+
+All build commands are accessible through a transient menu
+([[#h:transient-menu][Transient menu]]).
+
+The package depends on =paths= for directory configuration, =gptel= for
+AI-powered image description, =org-roam= for topic insertion, and
+=transient= for the command menu.
+
+* User options
+:PROPERTIES:
+:CUSTOM_ID: h:user-options
+:END:
+
+** Directory configuration
+:PROPERTIES:
+:CUSTOM_ID: h:directory-configuration
+:END:
+
+#+vindex: stafforini-hugo-dir
+#+vindex: stafforini-scripts-dir
+The user option ~stafforini-hugo-dir~ specifies the root directory of
+the stafforini.com Hugo project.  Every build command uses this as its
+~default-directory~, so shell scripts resolve paths relative to the Hugo
+project root.  The default value is derived from
+~paths-dir-personal-repos~ by appending =stafforini.com/=.  You would
+change this if your Hugo project lives at a different path.
+
+The user option ~stafforini-scripts-dir~ specifies the directory
+containing the Python and shell build scripts.  Its default value is the
+=scripts/= subdirectory of ~stafforini-hugo-dir~.  There is normally no
+reason to change this unless you have moved the scripts to a
+non-standard location.
+
+Both options accept a directory path as their value.
+
+** AI image description
+:PROPERTIES:
+:CUSTOM_ID: h:ai-image-description
+:END:
+
+#+vindex: stafforini-image-description-model
+The user option ~stafforini-image-description-model~ controls which AI
+model is used when ~stafforini-insert-image~ generates a descriptive
+filename and alt text for an image ([[#h:inserting-images][Inserting images]]).
+
+The value is a cons cell whose ~car~ is a backend name (a string, such
+as ="Gemini"=) and whose ~cdr~ is a model symbol (such as
+~gemini-flash-latest~).  The available backends and models are those
+configured in your =gptel= setup.
+
+When set to ~nil~, the command uses whatever model is currently active in
+=gptel=.  The default value is =("Gemini" . gemini-flash-latest)=,
+which provides fast and inexpensive image descriptions.  You might
+change this to a more capable vision model if you find the default
+descriptions insufficiently detailed.
+
+* Commands
+:PROPERTIES:
+:CUSTOM_ID: h:commands
+:END:
+
+** Exporting content
+:PROPERTIES:
+:CUSTOM_ID: h:exporting-content
+:END:
+
+#+findex: stafforini-export-all-notes
+#+findex: stafforini-export-all-quotes
+The export commands handle the bulk conversion of Org source files into
+Hugo markdown.  Each export command runs the full pipeline for its
+content type, including intermediate steps, so you do not need to invoke
+helper scripts manually.
+
+The command ~stafforini-export-all-notes~ exports all Org notes to Hugo
+markdown and rebuilds the search index.  Internally it runs
+=export-notes.sh=, which handles inject-lastmod, backlink generation,
+and citing-notes generation as part of its pipeline.  Use this after
+making mass edits to note files or when you want to ensure all notes are
+in sync.
+
+The command ~stafforini-export-all-quotes~ exports all Org quotes to
+Hugo markdown and rebuilds the search index.  Internally it runs
+=export-quotes.sh=, which handles the ID-to-slug map, work page
+generation, and topic page generation.  With a prefix argument
+(=C-u=), the command forces a complete re-export that ignores the
+manifest, re-exporting every quote rather than only those that have
+changed.  Use the prefix argument after structural changes to the export
+pipeline or when the manifest may be stale.
+
+After batch exporting, restart the server with
+~stafforini-start-server~ to pick up all changes
+([[#h:server-management][Server management]]).
+
+** Preparing and generating content
+:PROPERTIES:
+:CUSTOM_ID: h:preparing-and-generating
+:END:
+
+#+findex: stafforini-prepare-notes
+#+findex: stafforini-update-works
+#+findex: stafforini-update-backlinks
+#+findex: stafforini-process-pdfs
+These commands handle targeted updates to specific parts of the site's
+content pipeline.  Use them when an upstream source has changed without
+an accompanying Org edit.
+
+The command ~stafforini-prepare-notes~ adds ox-hugo metadata
+(=:EXPORT_FILE_NAME:=, =:EXPORT_HUGO_SECTION:=, and related properties)
+to new Org note files that do not yet have it.  Run this after creating
+new note files and before exporting them.  Internally it runs
+=prepare-org-notes.py=.
+
+The command ~stafforini-update-works~ generates or updates Hugo work
+pages from BibTeX data.  Use this after modifying a BibTeX entry when
+you want the corresponding work page to reflect the change.  On
+successful completion, the command automatically restarts the Hugo
+development server via ~stafforini-start-server~, because Hugo's
+incremental rebuild does not track cross-page shortcode dependencies and
+would otherwise serve stale data.  Internally it runs
+=generate-work-pages.py= with the =--skip-postprocess= flag.
+
+The command ~stafforini-update-backlinks~ regenerates backlink data from
+the org-roam database.  Use this after changing links between notes so
+that the site's backlink sections stay current.  Like
+~stafforini-update-works~, it automatically restarts the server on
+success.  Internally it runs =generate-backlinks.py=.
+
+The command ~stafforini-process-pdfs~ strips annotations from PDF files
+and generates first-page thumbnails.  Use this after adding or modifying
+PDFs in the project.  Internally it runs =process-pdfs.py=.
+
+** Auxiliary generation commands
+:PROPERTIES:
+:CUSTOM_ID: h:auxiliary-generation
+:END:
+
+#+findex: stafforini-generate-id-slug-map
+#+findex: stafforini-generate-topic-pages
+#+findex: stafforini-generate-citing-notes
+#+findex: stafforini-inject-lastmod
+These commands run individual generation steps that are normally handled
+automatically by the batch export pipelines
+([[#h:exporting-content][Exporting content]]).  They are useful for
+debugging or when you need to regenerate a specific artifact without
+running a full export.
+
+The command ~stafforini-generate-id-slug-map~ generates the Org-ID to
+Hugo slug JSON mapping and writes it to =/tmp/id-slug-map.json=.  The
+quote export pipeline uses this mapping to resolve topic links.
+Internally it runs =generate-id-slug-map.py=.
+
+The command ~stafforini-generate-topic-pages~ generates Hugo content
+pages for org-roam topic stubs.  Internally it runs
+=generate-topic-pages.py=.
+
+The command ~stafforini-generate-citing-notes~ generates the
+citing-notes reverse index from cite shortcodes in the Hugo content.
+Internally it runs =generate-citing-notes.py=.
+
+The command ~stafforini-inject-lastmod~ injects ~lastmod~ dates into
+Hugo markdown front matter, derived from the modification times of the
+corresponding Org source files.  Internally it runs =inject-lastmod.py=.
+
+** Build and deploy
+:PROPERTIES:
+:CUSTOM_ID: h:build-and-deploy
+:END:
+
+#+findex: stafforini-full-rebuild
+#+findex: stafforini-rebuild-search-index
+#+findex: stafforini-deploy
+The command ~stafforini-full-rebuild~ runs the entire build pipeline
+sequentially in a single compilation buffer.  The seven steps are:
+prepare notes, export notes (full), export quotes (full), process PDFs,
+clean the =public/= directory, run =hugo --minify=, and build the
+Pagefind search index.  The export scripts handle their own intermediate
+steps (inject-lastmod, backlinks, citing-notes, ID-slug map, work
+pages, topic pages), so every artifact is regenerated from scratch.  Use
+this after major structural changes or as a final check before
+deploying.  It is overkill for day-to-day work.
+
+The command ~stafforini-rebuild-search-index~ rebuilds the Pagefind
+search index for local development.  This is useful after content
+changes when you want to test search locally without running a full
+rebuild.  Internally it runs =build-search-index.sh=.
+
+The command ~stafforini-deploy~ builds the Hugo site and deploys it to
+Netlify.  Run the needed export and update steps first, verify locally
+with ~stafforini-start-server~, and then deploy.  Internally it runs
+=deploy.sh=.
+
+** Server management
+:PROPERTIES:
+:CUSTOM_ID: h:server-management
+:END:
+
+#+findex: stafforini-start-server
+#+findex: stafforini-stop-server
+The command ~stafforini-start-server~ starts the Hugo development server
+in a dedicated =*hugo-server*= buffer by running =npm run dev=.  It
+always kills any existing server process first to ensure a fresh build.
+This is intentional: Hugo's incremental rebuild does not track
+cross-page shortcode dependencies, so reusing a running server after
+content changes to work pages, backlinks, or other cross-referenced data
+would cause stale output.  Several commands, such as
+~stafforini-update-works~ and ~stafforini-update-backlinks~, call this
+command automatically on success ([[#h:preparing-and-generating][Preparing and generating content]]).
+
+The command ~stafforini-stop-server~ stops the Hugo development server
+by sending an interrupt signal to the =*hugo-server*= buffer process.
+If no server is running, it displays a message to that effect.
+
+As a rule of thumb: if you edited a single page, Hugo's live reload
+handles it automatically.  If your change affects other pages (BibTeX
+data, backlinks, work pages, citing-notes), restart the server.
+
+** Inserting images
+:PROPERTIES:
+:CUSTOM_ID: h:inserting-images
+:END:
+
+#+findex: stafforini-insert-image
+The command ~stafforini-insert-image~ inserts an image at point in an
+Org buffer, storing it in a structured location with an AI-generated
+descriptive filename.  It must be invoked from an ~org-mode~ buffer.
+
+When called interactively without an argument, the command prompts you
+to choose between pasting an image from the system clipboard or
+selecting a file.  Clipboard support requires the =pngpaste= utility
+(installable via =brew install pngpaste= on macOS).  When called from
+Lisp with a FILE argument, it uses that file directly.
+
+The command sends the image to an AI model (controlled by
+~stafforini-image-description-model~; see [[#h:ai-image-description][AI image description]])
+to generate two descriptions: a short one (2--5 words) used as the
+filename and a longer one (1--2 sentences) used as alt text.  Both
+descriptions are presented in the minibuffer for editing before use.
+
+The image is copied to a subdirectory of ~paths-dir-org-images~ named
+after the current article's slug (derived from the buffer's file name,
+which matches the =:EXPORT_FILE_NAME:= property used by ox-hugo).  If a
+file with the generated name already exists, a numeric suffix is
+appended to avoid collisions.  The command then inserts an
+=#+attr_html: :alt= directive and an Org file link at point, and
+refreshes inline image display in the surrounding region.
+
+If the image was pasted from the clipboard, the temporary file is
+deleted after copying.
+
+** Inserting topics
+:PROPERTIES:
+:CUSTOM_ID: h:inserting-topics
+:END:
+
+#+findex: stafforini-insert-topics
+The command ~stafforini-insert-topics~ inserts a "Topics:" line at point
+containing org-roam links.  It prompts repeatedly for org-roam nodes
+using ~org-roam-node-read~; press =C-g= when you are done selecting.
+Duplicate selections (by Org ID) are silently ignored.
+
+The collected topics are sorted alphabetically by title and inserted as
+a single line with middot-separated (~·~) org-roam ID links in the
+format =Topics: [[id:...][Title]] · [[id:...][Title]]=.  If no topics
+are selected, the command displays a message and inserts nothing.
+
+* Transient menu
+:PROPERTIES:
+:CUSTOM_ID: h:transient-menu
+:END:
+
+#+findex: stafforini-menu
+The command ~stafforini-menu~ opens a transient menu that provides
+quick access to all build commands.  The menu is organized into four
+columns:
+
+- *Export*: ~stafforini-export-all-notes~ (=n=) and
+  ~stafforini-export-all-quotes~ (=q=).
+- *Generate*: ~stafforini-prepare-notes~ (=p=),
+  ~stafforini-update-works~ (=w=), ~stafforini-update-backlinks~ (=b=),
+  and ~stafforini-process-pdfs~ (=d=).
+- *Build & deploy*: ~stafforini-full-rebuild~ (=R=),
+  ~stafforini-rebuild-search-index~ (=i=), and ~stafforini-deploy~ (=D=).
+- *Server*: ~stafforini-start-server~ (=s=) and
+  ~stafforini-stop-server~ (=k=).
+
+Bind ~stafforini-menu~ to a convenient key to access the full set of
+commands without memorizing individual bindings.
+
+* Indices
+:PROPERTIES:
+:CUSTOM_ID: h:indices
+:END:
+
+** Function index
+:PROPERTIES:
+:INDEX: fn
+:CUSTOM_ID: h:function-index
+:END:
+
+** Variable index
+:PROPERTIES:
+:INDEX: vr
+:CUSTOM_ID: h:variable-index
+:END:
