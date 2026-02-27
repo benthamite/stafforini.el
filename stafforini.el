@@ -88,14 +88,47 @@ compilation finishes successfully."
 ;;;; Commands
 
 ;;;###autoload
-(defun stafforini-prepare-notes ()
-  "Add ox-hugo metadata to new org note files."
+(defun stafforini-publish-note ()
+  "Add ox-hugo export metadata to the current org note.
+Works on the current buffer: adds `#+hugo_base_dir' at the file
+level and `:EXPORT_FILE_NAME:', `:EXPORT_HUGO_SECTION:', and
+`:EXPORT_DATE:' properties to the first level-1 heading.
+If `:EXPORT_FILE_NAME:' is already present, does nothing."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "prepare-org-notes.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-prepare-notes*"))
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not an org-mode buffer"))
+  (save-excursion
+    (goto-char (point-min))
+    (if (re-search-forward ":EXPORT_FILE_NAME:" nil t)
+        (message "Note is already published.")
+      ;; Add #+hugo_base_dir after #+title: if missing
+      (goto-char (point-min))
+      (unless (re-search-forward "^#\\+hugo_base_dir:" nil t)
+        (goto-char (point-min))
+        (if (re-search-forward "^#\\+title:" nil t)
+            (end-of-line)
+          (goto-char (point-min)))
+        (insert "\n#+hugo_base_dir: ~/My Drive/repos/stafforini.com/"))
+      ;; Find first level-1 heading's PROPERTIES drawer
+      (goto-char (point-min))
+      (unless (re-search-forward "^\\* " nil t)
+        (user-error "No level-1 heading found"))
+      (unless (re-search-forward "^[ \t]*:PROPERTIES:" nil t)
+        (user-error "No PROPERTIES drawer found under the first heading"))
+      (unless (re-search-forward "^[ \t]*:END:" nil t)
+        (user-error "Unterminated PROPERTIES drawer"))
+      ;; Insert export properties before :END:
+      (beginning-of-line)
+      (let ((slug (file-name-sans-extension
+                   (file-name-nondirectory (buffer-file-name))))
+            (date (format-time-string "%Y-%m-%d")))
+        (insert (format "  :EXPORT_FILE_NAME: %s\n" slug))
+        (insert "  :EXPORT_HUGO_SECTION: notes\n")
+        (insert (format "  :EXPORT_DATE: %s\n" date)))
+      (save-buffer)
+      (message "Note published (slug: %s)."
+               (file-name-sans-extension
+                (file-name-nondirectory (buffer-file-name)))))))
 
 ;;;###autoload
 (defun stafforini-export-all-notes ()
@@ -244,8 +277,8 @@ causes stale data."
 ;;;###autoload
 (defun stafforini-full-rebuild ()
   "Run the full build pipeline sequentially.
-Steps: prepare notes, export notes (full), export quotes (full),
-process PDFs, clean public, hugo build, pagefind index.
+Steps: export notes (full), export quotes (full), process PDFs,
+clean public, hugo build, pagefind index.
 The export scripts handle intermediate steps (inject-lastmod,
 backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
   (interactive)
@@ -254,9 +287,6 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
      (mapconcat
       #'identity
       (list
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "prepare-org-notes.py"
-                                              stafforini-scripts-dir)))
        (format "bash %s --full" (shell-quote-argument
                                  (expand-file-name "export-notes.sh"
                                                    stafforini-scripts-dir)))
@@ -281,7 +311,7 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("n" "Export notes" stafforini-export-all-notes)
     ("q" "Export quotes" stafforini-export-all-quotes)]
    ["Generate"
-    ("p" "Prepare notes" stafforini-prepare-notes)
+    ("p" "Publish note" stafforini-publish-note)
     ("w" "Update works" stafforini-update-works)
     ("b" "Update backlinks" stafforini-update-backlinks)
     ("d" "Process PDFs" stafforini-process-pdfs)]
