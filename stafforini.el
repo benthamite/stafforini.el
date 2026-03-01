@@ -188,6 +188,7 @@ Restarts the Hugo dev server on success."
                                           stafforini-scripts-dir)))
    "*stafforini-process-pdfs*"))
 
+;;;###autoload
 (defun stafforini-generate-id-slug-map ()
   "Generate the org-id to Hugo slug JSON mapping.
 Writes /tmp/id-slug-map.json, used by quote export to resolve
@@ -199,6 +200,7 @@ topic links."
                                           stafforini-scripts-dir)))
    "*stafforini-id-slug-map*"))
 
+;;;###autoload
 (defun stafforini-generate-topic-pages ()
   "Generate Hugo content pages for org-roam topic stubs."
   (interactive)
@@ -208,6 +210,7 @@ topic links."
                                           stafforini-scripts-dir)))
    "*stafforini-topic-pages*"))
 
+;;;###autoload
 (defun stafforini-generate-citing-notes ()
   "Generate the citing-notes reverse index from cite shortcodes."
   (interactive)
@@ -217,6 +220,7 @@ topic links."
                                           stafforini-scripts-dir)))
    "*stafforini-citing-notes*"))
 
+;;;###autoload
 (defun stafforini-inject-lastmod ()
   "Inject lastmod dates from org file modification times into Hugo markdown."
   (interactive)
@@ -315,13 +319,21 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("w" "Update works" stafforini-update-works)
     ("b" "Update backlinks" stafforini-update-backlinks)
     ("d" "Process PDFs" stafforini-process-pdfs)]
+   ["Auxiliary"
+    ("m" "ID-slug map" stafforini-generate-id-slug-map)
+    ("t" "Topic pages" stafforini-generate-topic-pages)
+    ("c" "Citing notes" stafforini-generate-citing-notes)
+    ("l" "Inject lastmod" stafforini-inject-lastmod)]
    ["Build & deploy"
     ("R" "Full rebuild" stafforini-full-rebuild)
     ("i" "Rebuild search index" stafforini-rebuild-search-index)
     ("D" "Deploy to Netlify" stafforini-deploy)]
    ["Server"
     ("s" "Start server" stafforini-start-server)
-    ("k" "Stop server" stafforini-stop-server)]])
+    ("k" "Stop server" stafforini-stop-server)]
+   ["Insert"
+    ("I" "Insert image" stafforini-insert-image)
+    ("T" "Insert topics" stafforini-insert-topics)]])
 
 ;;;; Image insertion
 

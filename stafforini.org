@@ -314,13 +314,19 @@ columns:
 
 - *Export*: ~stafforini-export-all-notes~ (=n=) and
   ~stafforini-export-all-quotes~ (=q=).
-- *Generate*: ~stafforini-prepare-notes~ (=p=),
+- *Generate*: ~stafforini-publish-note~ (=p=),
   ~stafforini-update-works~ (=w=), ~stafforini-update-backlinks~ (=b=),
   and ~stafforini-process-pdfs~ (=d=).
+- *Auxiliary*: ~stafforini-generate-id-slug-map~ (=m=),
+  ~stafforini-generate-topic-pages~ (=t=),
+  ~stafforini-generate-citing-notes~ (=c=), and
+  ~stafforini-inject-lastmod~ (=l=).
 - *Build & deploy*: ~stafforini-full-rebuild~ (=R=),
   ~stafforini-rebuild-search-index~ (=i=), and ~stafforini-deploy~ (=D=).
 - *Server*: ~stafforini-start-server~ (=s=) and
   ~stafforini-stop-server~ (=k=).
+- *Insert*: ~stafforini-insert-image~ (=I=) and
+  ~stafforini-insert-topics~ (=T=).
 
 Bind ~stafforini-menu~ to a convenient key to access the full set of
 commands without memorizing individual bindings.
