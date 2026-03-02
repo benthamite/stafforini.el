@@ -85,6 +85,25 @@ compilation finishes successfully."
   (when (file-exists-p export-common)
     (load export-common)))
 
+;;;; After-export title fixer
+
+;; ox-hugo occasionally drops the title from TOML frontmatter (especially
+;; for files with #+INCLUDE directives).  The batch pipeline has fixers,
+;; but interactive exports (`C-c C-e H H`) bypass them.  This advice
+;; ensures every export gets the same title fixup.
+
+(defun stafforini--fix-titles-after-export (&rest _)
+  "Fix missing titles after an interactive ox-hugo export.
+Runs the same `export--fix-missing-titles' used in the batch pipeline,
+deriving the org file and section from the current buffer context."
+  (when-let* ((org-file (buffer-file-name))
+              ((string-suffix-p ".org" org-file)))
+    (export--fix-missing-titles org-file stafforini-hugo-dir "notes")))
+
+(with-eval-after-load 'ox-hugo
+  (advice-add 'org-hugo-export-wim-to-md :after
+              #'stafforini--fix-titles-after-export))
+
 ;;;; Commands
 
 ;;;###autoload
