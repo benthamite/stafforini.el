@@ -250,6 +250,16 @@ topic links."
    "*stafforini-quote-topics*"))
 
 ;;;###autoload
+(defun stafforini-generate-note-categories ()
+  "Generate the note-categories data files from :CATEGORY: properties."
+  (interactive)
+  (stafforini--compile
+   (format "python %s" (shell-quote-argument
+                        (expand-file-name "generate-note-categories.py"
+                                          stafforini-scripts-dir)))
+   "*stafforini-note-categories*"))
+
+;;;###autoload
 (defun stafforini-inject-lastmod ()
   "Inject lastmod dates from org file modification times into Hugo markdown."
   (interactive)
@@ -353,7 +363,8 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("t" "Topic pages" stafforini-generate-topic-pages)
     ("c" "Citing notes" stafforini-generate-citing-notes)
     ("l" "Inject lastmod" stafforini-inject-lastmod)
-    ("Q" "Quote topics" stafforini-generate-quote-topics)]
+    ("Q" "Quote topics" stafforini-generate-quote-topics)
+    ("N" "Note categories" stafforini-generate-note-categories)]
    ["Build & deploy"
     ("R" "Full rebuild" stafforini-full-rebuild)
     ("i" "Rebuild search index" stafforini-rebuild-search-index)
