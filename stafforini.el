@@ -59,7 +59,13 @@ compilation finishes successfully."
   (let ((default-directory stafforini-hugo-dir)
         (compilation-buffer-name-function
          (when name
-           (lambda (_mode) name))))
+           (lambda (_mode) name)))
+        ;; Only prompt to save buffers visiting files under the Hugo
+        ;; project directory, not every modified buffer in the session.
+        (compilation-save-buffers-predicate
+         (lambda ()
+           (when-let* ((file (buffer-file-name)))
+             (file-in-directory-p file stafforini-hugo-dir)))))
     (let ((buf (compile command)))
       (when on-success
         (with-current-buffer buf
