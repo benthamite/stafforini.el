@@ -139,6 +139,35 @@ deriving the org file and section from the current buffer context."
   (advice-add 'org-hugo-export-wim-to-md :after
               #'stafforini--fix-titles-after-export))
 
+;;;; Duplicate-drawer monitor
+
+;; Catch PROPERTIES drawer duplication (a known corruption mode) in real time.
+
+(defun stafforini--check-duplicate-drawers ()
+  "Warn if the first heading has consecutive PROPERTIES drawers.
+Added to `after-save-hook' in org buffers to catch corruption early."
+  (when (derived-mode-p 'org-mode)
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        (when (re-search-forward "^\\*" nil t)
+          (forward-line 1)
+          (when (looking-at "[ \t]*:PROPERTIES:")
+            ;; Skip past the first drawer
+            (when (re-search-forward "^[ \t]*:END:" nil t)
+              (forward-line 1)
+              (when (looking-at "[ \t]*:PROPERTIES:")
+                (display-warning
+                 'stafforini
+                 (format "Duplicate PROPERTIES drawer detected in %s at line %d!"
+                         (buffer-name) (line-number-at-pos))
+                 :error)))))))))
+
+(add-hook 'org-mode-hook
+          (lambda ()
+            (add-hook 'after-save-hook #'stafforini--check-duplicate-drawers nil t)))
+
 ;;;; Commands
 
 ;;;###autoload
