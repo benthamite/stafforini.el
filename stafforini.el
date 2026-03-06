@@ -91,12 +91,41 @@ compilation finishes successfully."
   (when (file-exists-p export-common)
     (load export-common)))
 
-;;;; After-export title fixer
+;;;; Title-drop prevention
 
-;; ox-hugo occasionally drops the title from TOML frontmatter (especially
-;; for files with #+INCLUDE directives).  The batch pipeline has fixers,
-;; but interactive exports (`C-c C-e H H`) bypass them.  This advice
-;; ensures every export gets the same title fixup.
+;; ox-hugo intermittently drops the `title' field from TOML front matter.
+;; The root cause is in `org-export--get-subtree-options': it extracts the
+;; heading text via `looking-at' + `match-string-no-properties', but does
+;; not check if `looking-at' succeeded.  When the match fails (reason still
+;; unknown), `match-string-no-properties' returns nil from stale match data.
+;; tomelr then silently drops the nil-valued title key.
+;;
+;; This :around advice catches the nil *during* export, recovers the title
+;; from the heading, and logs a warning for diagnosis.
+
+(defun stafforini--ensure-title (orig-fn info)
+  "Ensure `org-hugo--get-sanitized-title' never returns nil.
+If ORIG-FN returns nil, extract the heading text directly."
+  (or (funcall orig-fn info)
+      (org-with-wide-buffer
+       (org-back-to-heading t)
+       (let ((case-fold-search nil))
+         (when (looking-at org-complex-heading-regexp)
+           (let ((title (string-trim (or (match-string-no-properties 4) ""))))
+             (unless (string-empty-p title)
+               (display-warning
+                'stafforini
+                (format "ox-hugo title was nil — recovered: %S (buffer: %s, point: %d)"
+                        title (buffer-name) (point))
+                :warning)
+               title)))))))
+
+(with-eval-after-load 'ox-hugo
+  (advice-add 'org-hugo--get-sanitized-title :around
+              #'stafforini--ensure-title))
+
+;; Keep the post-export fixer as a safety net — it catches any edge cases
+;; the :around advice misses (e.g. programmatic exports from other packages).
 
 (defun stafforini--fix-titles-after-export (&rest _)
   "Fix missing titles after an interactive ox-hugo export.
