@@ -74,12 +74,24 @@ compilation finishes successfully."
                     #'stafforini--maybe-run-on-success nil t)))
       buf)))
 
-(defun stafforini--reindex-suffix ()
-  "Return a shell command fragment that rebuilds the search index."
-  (format " && bash %s"
-          (shell-quote-argument
-           (expand-file-name "build-search-index.sh"
-                             stafforini-scripts-dir))))
+(defun stafforini--script-command (script &optional args)
+  "Build a shell command to run SCRIPT from `stafforini-scripts-dir'.
+The runner (bash or python) is inferred from the file extension.
+ARGS, if non-nil, is appended to the command."
+  (let ((runner (if (string= (file-name-extension script) "sh") "bash" "python")))
+    (concat runner " "
+            (shell-quote-argument
+             (expand-file-name script stafforini-scripts-dir))
+            (if args (concat " " args) ""))))
+
+(defun stafforini--run-script (script &optional args on-success)
+  "Run SCRIPT from `stafforini-scripts-dir' in a compilation buffer.
+ARGS, if non-nil, is appended to the command.
+ON-SUCCESS, if non-nil, is called when compilation succeeds."
+  (stafforini--compile (stafforini--script-command script args)
+                       (format "*stafforini-%s*"
+                               (file-name-sans-extension script))
+                       on-success))
 
 ;;;; Export link handler
 
@@ -223,11 +235,7 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
 (defun stafforini-export-all-notes ()
   "Export all org notes to Hugo markdown and rebuild the search index."
   (interactive)
-  (stafforini--compile
-   (format "bash %s" (shell-quote-argument
-                      (expand-file-name "export-notes.sh"
-                                        stafforini-scripts-dir)))
-   "*stafforini-export-notes*"))
+  (stafforini--run-script "export-notes.sh"))
 
 ;;;###autoload
 (defun stafforini-export-all-quotes (&optional full)
@@ -235,12 +243,9 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
 With prefix argument FULL, force a complete re-export ignoring the manifest."
   (interactive "P")
   (stafforini--compile
-   (concat
-    (format "bash %s%s" (shell-quote-argument
-                         (expand-file-name "export-quotes.sh"
-                                           stafforini-scripts-dir))
-            (if full " --full" ""))
-    (stafforini--reindex-suffix))
+   (concat (stafforini--script-command "export-quotes.sh"
+                                       (when full "--full"))
+           " && " (stafforini--script-command "build-search-index.sh"))
    "*stafforini-export-quotes*"))
 
 ;;;###autoload
@@ -248,34 +253,21 @@ With prefix argument FULL, force a complete re-export ignoring the manifest."
   "Generate or update work pages from BibTeX data.
 Restarts the Hugo dev server on success."
   (interactive)
-  (stafforini--compile
-   (format "python %s --skip-postprocess" (shell-quote-argument
-                                           (expand-file-name "generate-work-pages.py"
-                                                             stafforini-scripts-dir)))
-   "*stafforini-update-works*"
-   #'stafforini-start-server))
+  (stafforini--run-script "generate-work-pages.py" "--skip-postprocess"
+                          #'stafforini-start-server))
 
 ;;;###autoload
 (defun stafforini-update-backlinks ()
   "Regenerate backlink data from the org-roam database.
 Restarts the Hugo dev server on success."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "generate-backlinks.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-update-backlinks*"
-   #'stafforini-start-server))
+  (stafforini--run-script "generate-backlinks.py" nil #'stafforini-start-server))
 
 ;;;###autoload
 (defun stafforini-process-pdfs ()
   "Strip annotations from PDFs and generate first-page thumbnails."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "process-pdfs.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-process-pdfs*"))
+  (stafforini--run-script "process-pdfs.py"))
 
 ;;;###autoload
 (defun stafforini-generate-id-slug-map ()
@@ -283,71 +275,43 @@ Restarts the Hugo dev server on success."
 Writes /tmp/id-slug-map.json, used by quote export to resolve
 topic links."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "generate-id-slug-map.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-id-slug-map*"))
+  (stafforini--run-script "generate-id-slug-map.py"))
 
 ;;;###autoload
 (defun stafforini-generate-topic-pages ()
   "Generate Hugo content pages for org-roam topic stubs."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "generate-topic-pages.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-topic-pages*"))
+  (stafforini--run-script "generate-topic-pages.py"))
 
 ;;;###autoload
 (defun stafforini-generate-citing-notes ()
   "Generate the citing-notes reverse index from cite shortcodes."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "generate-citing-notes.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-citing-notes*"))
+  (stafforini--run-script "generate-citing-notes.py"))
 
 ;;;###autoload
 (defun stafforini-generate-quote-topics ()
   "Generate the quote-topics data file from :TOPICS: properties."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "generate-quote-topics.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-quote-topics*"))
+  (stafforini--run-script "generate-quote-topics.py"))
 
 ;;;###autoload
 (defun stafforini-generate-note-categories ()
   "Generate the note-categories data files from :CATEGORY: properties."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "generate-note-categories.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-note-categories*"))
+  (stafforini--run-script "generate-note-categories.py"))
 
 ;;;###autoload
 (defun stafforini-inject-lastmod ()
   "Inject lastmod dates from org file modification times into Hugo markdown."
   (interactive)
-  (stafforini--compile
-   (format "python %s" (shell-quote-argument
-                        (expand-file-name "inject-lastmod.py"
-                                          stafforini-scripts-dir)))
-   "*stafforini-inject-lastmod*"))
+  (stafforini--run-script "inject-lastmod.py"))
 
 ;;;###autoload
 (defun stafforini-deploy ()
   "Build the Hugo site and deploy it to Netlify."
   (interactive)
-  (stafforini--compile
-   (format "bash %s" (shell-quote-argument
-                      (expand-file-name "deploy.sh"
-                                        stafforini-scripts-dir)))
-   "*stafforini-deploy*"))
+  (stafforini--run-script "deploy.sh"))
 
 ;;;###autoload
 (defun stafforini-start-server ()
@@ -381,11 +345,7 @@ causes stale data."
 (defun stafforini-rebuild-search-index ()
   "Rebuild the Pagefind search index for local development."
   (interactive)
-  (stafforini--compile
-   (format "bash %s" (shell-quote-argument
-                      (expand-file-name "build-search-index.sh"
-                                        stafforini-scripts-dir)))
-   "*stafforini-search-index*"))
+  (stafforini--run-script "build-search-index.sh"))
 
 ;;;###autoload
 (defun stafforini-full-rebuild ()
@@ -400,15 +360,9 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
      (mapconcat
       #'identity
       (list
-       (format "bash %s --full" (shell-quote-argument
-                                 (expand-file-name "export-notes.sh"
-                                                   stafforini-scripts-dir)))
-       (format "bash %s --full" (shell-quote-argument
-                                 (expand-file-name "export-quotes.sh"
-                                                   stafforini-scripts-dir)))
-       (format "python %s" (shell-quote-argument
-                            (expand-file-name "process-pdfs.py"
-                                              stafforini-scripts-dir)))
+       (stafforini--script-command "export-notes.sh" "--full")
+       (stafforini--script-command "export-quotes.sh" "--full")
+       (stafforini--script-command "process-pdfs.py")
        "trash public 2>/dev/null || true"
        "hugo --minify"
        "npx pagefind --site public")
