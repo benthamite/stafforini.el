@@ -78,11 +78,14 @@ compilation finishes successfully."
   "Build a shell command to run SCRIPT from `stafforini-scripts-dir'.
 The runner (bash or python) is inferred from the file extension.
 ARGS, if non-nil, is appended to the command."
-  (let ((runner (if (string= (file-name-extension script) "sh") "bash" "python")))
+  (let ((runner (pcase (file-name-extension script)
+                  ("sh" "bash")
+                  ("py" "python")
+                  (ext (error "Unsupported script extension: .%s" ext)))))
     (concat runner " "
             (shell-quote-argument
              (expand-file-name script stafforini-scripts-dir))
-            (if args (concat " " args) ""))))
+            (if args (concat " " (shell-quote-argument args)) ""))))
 
 (defun stafforini--run-script (script &optional args on-success)
   "Run SCRIPT from `stafforini-scripts-dir' in a compilation buffer.
@@ -150,7 +153,8 @@ byte-compilation dependency on org-macs at compile time."
 Runs the same `export--fix-missing-titles' used in the batch pipeline,
 deriving the org file and section from the current buffer context."
   (when-let* ((org-file (buffer-file-name))
-              ((string-suffix-p ".org" org-file)))
+              ((string-suffix-p ".org" org-file))
+              ((fboundp 'export--fix-missing-titles)))
     (export--fix-missing-titles org-file stafforini-hugo-dir "notes")))
 
 (with-eval-after-load 'ox-hugo
@@ -209,7 +213,8 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
         (if (re-search-forward "^#\\+title:" nil t)
             (end-of-line)
           (goto-char (point-min)))
-        (insert "\n#+hugo_base_dir: ~/My Drive/repos/stafforini.com/"))
+        (insert (format "\n#+hugo_base_dir: %s"
+                        (abbreviate-file-name stafforini-hugo-dir))))
       ;; Find first level-1 heading's PROPERTIES drawer
       (goto-char (point-min))
       (unless (re-search-forward "^\\* " nil t)
@@ -516,6 +521,8 @@ Uses `gptel' with the image as context via a let-binding, so the global
                      (short (or (car parsed) "image"))
                      (alt (or (cdr parsed) "Image")))
                 (funcall callback short alt))
+            (when (and file (string-prefix-p (temporary-file-directory) file))
+              (delete-file file t))
             (user-error "Image description failed: %s"
                         (plist-get info :status))))))))
 
