@@ -7,6 +7,8 @@ Emacs commands for building and previewing the [[https://github.com/benthamite/s
 
 This package wraps the project's Python and shell build scripts, running them asynchronously via =compile= so output appears in a compilation buffer with proper error highlighting. See =PUBLISHING.md= in the Hugo repo for additional details.
 
+The development repository is on [[https://github.com/benthamite/stafforini.el][GitHub]].
+
 * Workflows
 
 There are two tiers of commands: *interactive export* for single-file edits during day-to-day work, and *batch commands* for bulk operations. You rarely need both at once.

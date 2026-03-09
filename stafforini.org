@@ -45,6 +45,8 @@ The package depends on =paths= for directory configuration, =gptel= for
 AI-powered image description, =org-roam= for topic insertion, and
 =transient= for the command menu.
 
+The development repository is on [[https://github.com/benthamite/stafforini.el][GitHub]].
+
 * User options
 :PROPERTIES:
 :CUSTOM_ID: h:user-options

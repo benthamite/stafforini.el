@@ -1,0 +1,220 @@
+\input texinfo    @c -*- texinfo -*-
+@c %**start of header
+@setfilename README.info
+@settitle stafforini.el
+@documentencoding UTF-8
+@documentlanguage en
+@c %**end of header
+
+@dircategory Misc
+@direntry
+* (README).             stafforini.el.
+@end direntry
+
+@finalout
+@titlepage
+@author Pablo Stafforini
+@end titlepage
+
+@ifnottex
+@node Top
+@top stafforini.el
+
+Emacs commands for building and previewing the @uref{https://github.com/benthamite/stafforini.com, stafforini.com} Hugo site. @*
+
+@end ifnottex
+
+@menu
+* Overview::
+* Workflows::
+* Commands::
+
+@detailmenu
+--- The Detailed Node Listing ---
+
+Workflows
+
+* Day-to-day editing::
+* Targeted updates::
+* Batch export::
+* Full rebuild::
+* Deploying::
+* Server management::
+
+Day-to-day editing
+
+* Editing a note::
+* Editing a quote::
+
+Server management
+
+* When to restart the server::
+
+@end detailmenu
+@end menu
+
+@node Overview
+@unnumbered Overview
+
+This package wraps the project's Python and shell build scripts, running them asynchronously via @samp{compile} so output appears in a compilation buffer with proper error highlighting. See @samp{PUBLISHING.md} in the Hugo repo for additional details. @*
+
+The development repository is on @uref{https://github.com/benthamite/stafforini.el, GitHub}. @*
+
+@node Workflows
+@unnumbered Workflows
+
+There are two tiers of commands: @strong{interactive export} for single-file edits during day-to-day work, and @strong{batch commands} for bulk operations. You rarely need both at once. @*
+
+@menu
+* Day-to-day editing::
+* Targeted updates::
+* Batch export::
+* Full rebuild::
+* Deploying::
+* Server management::
+@end menu
+
+@node Day-to-day editing
+@unnumberedsec Day-to-day editing
+
+For routine single-file changes, use ox-hugo's interactive export. Hugo's live reload picks up the new markdown automatically — no @samp{stafforini.el} commands needed. @*
+
+@menu
+* Editing a note::
+* Editing a quote::
+@end menu
+
+@node Editing a note
+@unnumberedsubsec Editing a note
+
+@enumerate
+@item
+Edit the org file. @*
+@item
+Export with @samp{C-c C-e H H} (current subtree). @*
+@item
+Hugo live reload picks it up. @*
+@end enumerate
+
+@node Editing a quote
+@unnumberedsubsec Editing a quote
+
+@enumerate
+@item
+Edit the @samp{:public:} subtree in the bibliographic note. @*
+@item
+Export with @samp{C-c C-e H A} (all subtrees). @*
+@item
+Hugo live reload picks it up. @*
+@end enumerate
+
+@node Targeted updates
+@unnumberedsec Targeted updates
+
+Use these when you've changed a specific upstream source @emph{without} editing org content. Each command updates only what it needs to. @*
+
+@itemize
+@item
+@strong{Changed a Bib@TeX{} entry} → @samp{M-x stafforini-update-works}. Regenerates work pages from Bib@TeX{} data. Auto-restarts the server (Hugo doesn't track shortcode cross-references, so live reload won't propagate Bib@TeX{} changes to citing pages). @*
+
+@item
+@strong{Changed links between notes} → @samp{M-x stafforini-update-backlinks}. Regenerates backlink data from the org-roam database. Auto-restarts the server. @*
+
+@item
+@strong{Created a new org note file} → @samp{M-x stafforini-prepare-notes}. Adds ox-hugo metadata (@samp{:EXPORT_FILE_NAME:}, @samp{:EXPORT_HUGO_SECTION:}, etc.) to new files that don't have it yet. Run @emph{before} exporting. @*
+
+@item
+@strong{Added or changed PDFs} → @samp{M-x stafforini-process-pdfs}. Strips annotations and generates first-page thumbnails. @*
+
+@item
+@strong{Search index out of date} → @samp{M-x stafforini-rebuild-search-index}. Rebuilds the Pagefind index. Useful after content changes when you want to test search locally without a full rebuild. @*
+@end itemize
+
+@node Batch export
+@unnumberedsec Batch export
+
+Use these after mass edits, migrations, or whenever you want to ensure everything is in sync. Each export command handles its full pipeline automatically — no need to run intermediate scripts. @*
+
+@itemize
+@item
+@samp{M-x stafforini-export-all-notes} — exports all org notes, then runs inject-lastmod, generate-backlinks, and generate-citing-notes. @*
+@item
+@samp{M-x stafforini-export-all-quotes} — generates the ID→slug map, exports all org quotes, then generates work pages and topic pages. @*
+@end itemize
+
+After batch exporting, restart the server with @samp{M-x stafforini-start-server} to pick up all changes. @*
+
+@node Full rebuild
+@unnumberedsec Full rebuild
+
+@samp{M-x stafforini-full-rebuild} — runs the entire pipeline from scratch (7 steps: prepare notes → export notes → export quotes → process PDFs → clean public → hugo build → pagefind index). Use after major structural changes, or as a final check before deploying. Overkill for day-to-day work. @*
+
+@node Deploying
+@unnumberedsec Deploying
+
+@enumerate
+@item
+Run the needed export/update steps. @*
+@item
+@samp{M-x stafforini-start-server} to verify locally. @*
+@item
+@samp{M-x stafforini-deploy}. @*
+@end enumerate
+
+@node Server management
+@unnumberedsec Server management
+
+@itemize
+@item
+@samp{M-x stafforini-start-server} — starts (or restarts) the Hugo dev server. Always kills any existing server first to ensure a fresh build. @*
+@item
+@samp{M-x stafforini-stop-server} — stops the server. @*
+@end itemize
+
+@menu
+* When to restart the server::
+@end menu
+
+@node When to restart the server
+@unnumberedsubsec When to restart the server
+
+@itemize
+@item
+@strong{Same page changed} → live reload works, no restart needed. @*
+@item
+@strong{Change affects other pages} (Bib@TeX{}, backlinks, work pages, citing-notes) → restart with @samp{M-x stafforini-start-server}. The standalone @samp{update-works} and @samp{update-backlinks} commands do this automatically. @*
+@end itemize
+
+@node Commands
+@unnumbered Commands
+
+@multitable {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa} {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+@headitem Command
+@tab Description
+@item @samp{M-x stafforini-prepare-notes}
+@tab Add ox-hugo metadata to new org note files
+@item @samp{M-x stafforini-export-all-notes}
+@tab Export notes + inject lastmod, backlinks, citing-notes
+@item @samp{M-x stafforini-export-all-quotes}
+@tab ID-slug map + export quotes + work pages, topic pages
+@item @samp{M-x stafforini-update-works}
+@tab Generate/update work pages from Bib@TeX{} data
+@item @samp{M-x stafforini-update-backlinks}
+@tab Regenerate backlink data from org-roam
+@item @samp{M-x stafforini-process-pdfs}
+@tab Strip annotations from PDFs and generate thumbnails
+@item @samp{M-x stafforini-start-server}
+@tab Start Hugo dev server (always restarts for fresh data)
+@item @samp{M-x stafforini-stop-server}
+@tab Stop the Hugo dev server
+@item @samp{M-x stafforini-rebuild-search-index}
+@tab Rebuild the Pagefind search index
+@item @samp{M-x stafforini-full-rebuild}
+@tab Run the full pipeline sequentially (7 steps)
+@item @samp{M-x stafforini-deploy}
+@tab Build and deploy to Netlify
+@item @samp{M-x stafforini-insert-image}
+@tab Insert an image with AI-generated filename and alt text
+@end multitable
+
+@bye

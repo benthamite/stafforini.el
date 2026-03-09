@@ -90,6 +90,8 @@ The package depends on @samp{paths} for directory configuration, @samp{gptel} fo
 AI-powered image description, @samp{org-roam} for topic insertion, and @*
 @samp{transient} for the command menu. @*
 
+The development repository is on @uref{https://github.com/benthamite/stafforini.el, GitHub}. @*
+
 @node User options
 @chapter User options
 
@@ -353,15 +355,23 @@ columns: @*
 @strong{Export}: @code{stafforini-export-all-notes} (@samp{n}) and @*
 @code{stafforini-export-all-quotes} (@samp{q}). @*
 @item
-@strong{Generate}: @code{stafforini-prepare-notes} (@samp{p}), @*
+@strong{Generate}: @code{stafforini-publish-note} (@samp{p}), @*
 @code{stafforini-update-works} (@samp{w}), @code{stafforini-update-backlinks} (@samp{b}), @*
 and @code{stafforini-process-pdfs} (@samp{d}). @*
+@item
+@strong{Auxiliary}: @code{stafforini-generate-id-slug-map} (@samp{m}), @*
+@code{stafforini-generate-topic-pages} (@samp{t}), @*
+@code{stafforini-generate-citing-notes} (@samp{c}), and @*
+@code{stafforini-inject-lastmod} (@samp{l}). @*
 @item
 @strong{Build & deploy}: @code{stafforini-full-rebuild} (@samp{R}), @*
 @code{stafforini-rebuild-search-index} (@samp{i}), and @code{stafforini-deploy} (@samp{D}). @*
 @item
 @strong{Server}: @code{stafforini-start-server} (@samp{s}) and @*
 @code{stafforini-stop-server} (@samp{k}). @*
+@item
+@strong{Insert}: @code{stafforini-insert-image} (@samp{I}) and @*
+@code{stafforini-insert-topics} (@samp{T}). @*
 @end itemize
 
 Bind @code{stafforini-menu} to a convenient key to access the full set of @*
