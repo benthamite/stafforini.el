@@ -236,6 +236,73 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
                (file-name-sans-extension
                 (file-name-nondirectory (buffer-file-name)))))))
 
+(declare-function org-entry-get "org")
+(declare-function org-entry-put "org")
+(declare-function org-entry-delete "org")
+(declare-function org-back-to-heading "org")
+
+;;;; Hugo custom front matter
+
+(defcustom stafforini-hugo-custom-properties
+  '(("is_tag" . "true"))
+  "Alist of available Hugo custom front matter properties.
+Each entry is (KEY . VALUE) where KEY is the front matter field name
+and VALUE is the value to set."
+  :type '(alist :key-type string :value-type string)
+  :group 'stafforini)
+
+(defun stafforini--parse-hugo-custom-fm ()
+  "Parse EXPORT_HUGO_CUSTOM_FRONT_MATTER from the heading at point.
+Return an alist of (KEY . VALUE) pairs."
+  (when-let* ((raw (org-entry-get nil "EXPORT_HUGO_CUSTOM_FRONT_MATTER")))
+    (let ((plist (ignore-errors (car (read-from-string (concat "(" raw ")")))))
+          result)
+      (while plist
+        (when (keywordp (car plist))
+          (push (cons (substring (symbol-name (car plist)) 1) ; strip leading :
+                      (format "%s" (cadr plist)))
+                result))
+        (setq plist (cddr plist)))
+      (nreverse result))))
+
+(defun stafforini--build-hugo-custom-fm (alist)
+  "Build an EXPORT_HUGO_CUSTOM_FRONT_MATTER value string from ALIST."
+  (mapconcat (lambda (pair)
+               (format ":%s %s" (car pair) (cdr pair)))
+             alist " "))
+
+;;;###autoload
+(defun stafforini-set-hugo-property ()
+  "Toggle a Hugo custom front matter property on the heading at point.
+If only one property is defined in `stafforini-hugo-custom-properties',
+toggle it directly.  Otherwise, prompt the user to select a property.
+
+When the selected property is already set, remove it; otherwise add it."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not an org-mode buffer"))
+  (save-excursion
+    (org-back-to-heading t)
+    (let* ((available stafforini-hugo-custom-properties)
+           (current (stafforini--parse-hugo-custom-fm))
+           (key (if (length= available 1)
+                    (caar available)
+                  (completing-read
+                   "Property: " (mapcar #'car available) nil t)))
+           (value (cdr (assoc key available)))
+           (already-set (assoc key current)))
+      (if already-set
+          (let ((new-alist (assoc-delete-all key (copy-alist current))))
+            (if new-alist
+                (org-entry-put nil "EXPORT_HUGO_CUSTOM_FRONT_MATTER"
+                               (stafforini--build-hugo-custom-fm new-alist))
+              (org-entry-delete nil "EXPORT_HUGO_CUSTOM_FRONT_MATTER"))
+            (message "Removed `%s' from heading." key))
+        (let ((new-alist (append current (list (cons key value)))))
+          (org-entry-put nil "EXPORT_HUGO_CUSTOM_FRONT_MATTER"
+                         (stafforini--build-hugo-custom-fm new-alist))
+          (message "Set `%s = %s' on heading." key value))))))
+
 ;;;###autoload
 (defun stafforini-export-all-notes ()
   "Export all org notes to Hugo markdown and rebuild the search index."
@@ -384,6 +451,7 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("q" "Export quotes" stafforini-export-all-quotes)]
    ["Generate"
     ("p" "Publish note" stafforini-publish-note)
+    ("F" "Set Hugo property" stafforini-set-hugo-property)
     ("w" "Update works" stafforini-update-works)
     ("b" "Update backlinks" stafforini-update-backlinks)
     ("d" "Process PDFs" stafforini-process-pdfs)]
