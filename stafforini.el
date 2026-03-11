@@ -147,19 +147,32 @@ byte-compilation dependency on org-macs at compile time."
 
 ;; Keep the post-export fixer as a safety net — it catches any edge cases
 ;; the :around advice misses (e.g. programmatic exports from other packages).
+;; Also inject lastmod (and other front matter fixups) so that interactive
+;; single-file exports don't lose metadata that ox-hugo doesn't set.
 
-(defun stafforini--fix-titles-after-export (&rest _)
-  "Fix missing titles after an interactive ox-hugo export.
-Runs the same `export--fix-missing-titles' used in the batch pipeline,
-deriving the org file and section from the current buffer context."
+(defun stafforini--fixup-after-export (&rest _)
+  "Apply front matter fixups after an interactive ox-hugo export.
+Fixes missing titles (safety net) and injects lastmod, date, and
+title markup via `inject-lastmod.py --file'.  Derives the exported
+markdown file paths from the current org buffer context."
   (when-let* ((org-file (buffer-file-name))
-              ((string-suffix-p ".org" org-file))
-              ((fboundp 'export--fix-missing-titles)))
-    (export--fix-missing-titles org-file stafforini-hugo-dir "notes")))
+              ((string-suffix-p ".org" org-file)))
+    ;; Title safety net
+    (when (fboundp 'export--fix-missing-titles)
+      (export--fix-missing-titles org-file stafforini-hugo-dir "notes"))
+    ;; Inject lastmod and other front matter fixups for each exported file
+    (when (fboundp 'export--heading-export-pairs)
+      (let ((script (expand-file-name "inject-lastmod.py" stafforini-scripts-dir)))
+        (dolist (pair (export--heading-export-pairs org-file))
+          (let ((md-path (expand-file-name
+                          (format "content/notes/%s.md" (car pair))
+                          stafforini-hugo-dir)))
+            (when (file-exists-p md-path)
+              (call-process "python3" nil nil nil script "--file" md-path))))))))
 
 (with-eval-after-load 'ox-hugo
   (advice-add 'org-hugo-export-wim-to-md :after
-              #'stafforini--fix-titles-after-export))
+              #'stafforini--fixup-after-export))
 
 ;;;; Duplicate-drawer monitor
 
