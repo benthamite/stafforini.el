@@ -268,7 +268,8 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
 ;;;; Hugo custom front matter
 
 (defcustom stafforini-hugo-custom-properties
-  '(("is_tag" . "true"))
+  '(("is_tag" . "true")
+    ("unlisted" . "true"))
   "Alist of available Hugo custom front matter properties.
 Each entry is (KEY . VALUE) where KEY is the front matter field name
 and VALUE is the value to set."
