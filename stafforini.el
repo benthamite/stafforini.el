@@ -60,12 +60,11 @@ compilation finishes successfully."
         (compilation-buffer-name-function
          (when name
            (lambda (_mode) name)))
-        ;; Only prompt to save buffers visiting files under the Hugo
-        ;; project directory, not every modified buffer in the session.
         (compilation-save-buffers-predicate
-         (lambda ()
-           (when-let* ((file (buffer-file-name)))
-             (file-in-directory-p file stafforini-hugo-dir)))))
+         (stafforini--hugo-file-predicate))
+        (process-connection-type nil)
+        (process-environment
+         (stafforini--sanitized-process-environment)))
     (let ((buf (compile command)))
       (when on-success
         (with-current-buffer buf
@@ -73,6 +72,18 @@ compilation finishes successfully."
           (add-hook 'compilation-finish-functions
                     #'stafforini--maybe-run-on-success nil t)))
       buf)))
+
+(defun stafforini--hugo-file-predicate ()
+  "Return a predicate that matches buffers visiting files under the Hugo dir."
+  (lambda ()
+    (when-let* ((file (buffer-file-name)))
+      (file-in-directory-p file stafforini-hugo-dir))))
+
+(defun stafforini--sanitized-process-environment ()
+  "Return `process-environment' with EDITOR/VISUAL neutralized.
+Prevents child processes from spawning emacsclient, which can
+collide with the running server and produce spurious errors."
+  (append '("EDITOR=cat" "VISUAL=cat") process-environment))
 
 (defun stafforini--script-command (script &optional args)
   "Build a shell command to run SCRIPT from `stafforini-scripts-dir'.
