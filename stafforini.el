@@ -329,12 +329,14 @@ E.g. \"Pinker2018EnlightenmentNowCase\" → \"pinker\"."
 
 (defun stafforini--cite-key-to-slug (cite-key)
   "Convert CamelCase CITE-KEY to a kebab-case work slug.
-E.g. \"Pinker2018EnlightenmentNowCase\" → \"pinker-2018-enlightenment-now-case\"."
-  (thread-last cite-key
-    (replace-regexp-in-string "\\([a-zA-Z]\\)\\([0-9]\\)" "\\1-\\2")
-    (replace-regexp-in-string "\\([0-9]\\)\\([a-zA-Z]\\)" "\\1-\\2")
-    (replace-regexp-in-string "\\([a-z]\\)\\([A-Z]\\)" "\\1-\\2")
-    (downcase)))
+E.g. \"Pinker2018EnlightenmentNowCase\" →
+\"pinker-2018-enlightenment-now-case\"."
+  (let ((case-fold-search nil))
+    (thread-last cite-key
+      (replace-regexp-in-string "\\([a-zA-Z]\\)\\([0-9]\\)" "\\1-\\2")
+      (replace-regexp-in-string "\\([0-9]\\)\\([a-zA-Z]\\)" "\\1-\\2")
+      (replace-regexp-in-string "\\([a-z]\\)\\([A-Z]\\)" "\\1-\\2")
+      (downcase))))
 
 (defun stafforini--heading-quote-locator ()
   "Return the cite locator from the blockquote under the heading at point.
@@ -414,20 +416,27 @@ When the selected property is already set, remove it; otherwise add it."
 
 ;;;###autoload
 (defun stafforini-export-all-notes ()
-  "Export all org notes to Hugo markdown and rebuild the search index."
+  "Export all org notes to Hugo markdown and rebuild the search index.
+Stop the Hugo dev server before exporting to avoid overwhelming it
+with file-change rebuilds, and restart it on success."
   (interactive)
-  (stafforini--run-script "export-notes.sh"))
+  (stafforini-stop-server)
+  (stafforini--run-script "export-notes.sh" nil #'stafforini-start-server))
 
 ;;;###autoload
 (defun stafforini-export-all-quotes (&optional full)
   "Export all org quotes to Hugo markdown and rebuild the search index.
-With prefix argument FULL, force a complete re-export ignoring the manifest."
+With prefix argument FULL, force a complete re-export ignoring the
+manifest.  Stop the Hugo dev server before exporting and restart it
+on success."
   (interactive "P")
+  (stafforini-stop-server)
   (stafforini--compile
    (concat (stafforini--script-command "export-quotes.sh"
                                        (when full "--full"))
            " && " (stafforini--script-command "build-search-index.sh"))
-   "*stafforini-export-quotes*"))
+   "*stafforini-export-quotes*"
+   #'stafforini-start-server))
 
 ;;;###autoload
 (defun stafforini-update-works ()
