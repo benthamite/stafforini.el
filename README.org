@@ -54,7 +54,7 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 
 ** Full rebuild
 
-=M-x stafforini-full-rebuild= — runs the entire pipeline from scratch (7 steps: prepare notes → export notes → export quotes → process PDFs → clean public → hugo build → pagefind index). Use after major structural changes, or as a final check before deploying. Overkill for day-to-day work.
+=M-x stafforini-full-rebuild= — runs the entire pipeline from scratch (7 steps: prepare notes → export notes → export quotes → process PDFs → clean public contents → hugo build → pagefind index). Use after major structural changes, or as a final check before deploying. Overkill for day-to-day work. The clean step preserves symlinks (e.g. nosync) by deleting contents rather than the directory itself.
 
 ** Deploying
 

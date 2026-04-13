@@ -213,7 +213,8 @@ corresponding Org source files.  Internally it runs =inject-lastmod.py=.
 The command ~stafforini-full-rebuild~ runs the entire build pipeline
 sequentially in a single compilation buffer.  The seven steps are:
 prepare notes, export notes (full), export quotes (full), process PDFs,
-clean the =public/= directory, run =hugo --minify=, and build the
+clean the =public/= directory contents (preserving any symlink), run
+=hugo --minify=, and build the
 Pagefind search index.  The export scripts handle their own intermediate
 steps (inject-lastmod, backlinks, citing-notes, ID-slug map, work
 pages, topic pages), so every artifact is regenerated from scratch.  Use

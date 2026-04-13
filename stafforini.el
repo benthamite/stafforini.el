@@ -553,7 +553,7 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
        (stafforini--script-command "export-notes.sh" "--full")
        (stafforini--script-command "export-quotes.sh" "--full")
        (stafforini--script-command "process-pdfs.py")
-       "trash public 2>/dev/null || true"
+       "find public -mindepth 1 -delete 2>/dev/null || true"
        "hugo --minify"
        "npx pagefind --site public")
       " && ")
