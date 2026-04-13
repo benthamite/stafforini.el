@@ -230,15 +230,7 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
     (goto-char (point-min))
     (if (re-search-forward ":EXPORT_FILE_NAME:" nil t)
         (message "Note is already published.")
-      ;; Add #+hugo_base_dir after #+title: if missing
-      (goto-char (point-min))
-      (unless (re-search-forward "^#\\+hugo_base_dir:" nil t)
-        (goto-char (point-min))
-        (if (re-search-forward "^#\\+title:" nil t)
-            (end-of-line)
-          (goto-char (point-min)))
-        (insert (format "\n#+hugo_base_dir: %s"
-                        (abbreviate-file-name stafforini-hugo-dir))))
+      (stafforini--ensure-hugo-base-dir)
       ;; Find first level-1 heading's PROPERTIES drawer
       (goto-char (point-min))
       (unless (re-search-forward "^\\* " nil t)
@@ -264,6 +256,98 @@ If `:EXPORT_FILE_NAME:' is already present, does nothing."
 (declare-function org-entry-put "org")
 (declare-function org-entry-delete "org")
 (declare-function org-back-to-heading "org")
+(declare-function org-toggle-tag "org")
+(declare-function org-get-heading "org")
+
+;;;; Quote publishing
+
+;;;###autoload
+(defun stafforini-publish-quote ()
+  "Add ox-hugo export metadata to the heading at point for diary quote export.
+Add `:public:' tag and `:EXPORT_FILE_NAME:', `:EXPORT_HUGO_SECTION:',
+`:EXPORT_DATE:', and `:EXPORT_HUGO_CUSTOM_FRONT_MATTER:' properties.
+If `:EXPORT_FILE_NAME:' is already present, do nothing."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not an org-mode buffer"))
+  (save-excursion
+    (org-back-to-heading t)
+    (when (org-entry-get nil "EXPORT_FILE_NAME")
+      (user-error "Quote is already published"))
+    (stafforini--ensure-hugo-base-dir)
+    (let* ((cite-key (stafforini--file-cite-key))
+           (author (stafforini--cite-key-author cite-key))
+           (work-slug (stafforini--cite-key-to-slug cite-key))
+           (title (org-get-heading t t t t))
+           (slug (concat author "-" (stafforini--slugify title)))
+           (locator (stafforini--heading-quote-locator))
+           (date (format-time-string "%Y-%m-%d"))
+           (fm-pairs (list (cons "work" (format "\"%s\"" work-slug)))))
+      (when locator
+        (push (cons "locator" (format "\"%s\"" locator)) fm-pairs)
+        (setq fm-pairs (nreverse fm-pairs)))
+      (org-toggle-tag "public" 'on)
+      (org-entry-put nil "EXPORT_FILE_NAME" slug)
+      (org-entry-put nil "EXPORT_HUGO_SECTION" "quotes")
+      (org-entry-put nil "EXPORT_DATE" date)
+      (org-entry-put nil "EXPORT_HUGO_CUSTOM_FRONT_MATTER"
+                     (stafforini--build-hugo-custom-fm fm-pairs))
+      (save-buffer)
+      (message "Quote published (slug: %s)." slug))))
+
+(defun stafforini--ensure-hugo-base-dir ()
+  "Insert `#+hugo_base_dir' at the top of the buffer if missing."
+  (save-excursion
+    (goto-char (point-min))
+    (unless (re-search-forward "^#\\+hugo_base_dir:" nil t)
+      (goto-char (point-min))
+      (if (re-search-forward "^#\\+title:" nil t)
+          (end-of-line)
+        (goto-char (point-min)))
+      (insert (format "\n#+hugo_base_dir: %s"
+                      (abbreviate-file-name stafforini-hugo-dir))))))
+
+(defun stafforini--file-cite-key ()
+  "Return the cite key from ROAM_REFS on the file's level-1 heading."
+  (save-excursion
+    (goto-char (point-min))
+    (unless (re-search-forward "^\\* " nil t)
+      (user-error "No level-1 heading found"))
+    (let ((refs (org-entry-get nil "ROAM_REFS")))
+      (unless refs
+        (user-error "No ROAM_REFS property found"))
+      (if (string-match "@\\([A-Za-z0-9]+\\)" refs)
+          (match-string 1 refs)
+        (user-error "No cite key found in ROAM_REFS")))))
+
+(defun stafforini--cite-key-author (cite-key)
+  "Extract the lowercased author surname from CITE-KEY.
+E.g. \"Pinker2018EnlightenmentNowCase\" → \"pinker\"."
+  (if (string-match "\\`\\([A-Za-z]+?\\)[0-9]" cite-key)
+      (downcase (match-string 1 cite-key))
+    (user-error "Cannot extract author from cite key: %s" cite-key)))
+
+(defun stafforini--cite-key-to-slug (cite-key)
+  "Convert CamelCase CITE-KEY to a kebab-case work slug.
+E.g. \"Pinker2018EnlightenmentNowCase\" → \"pinker-2018-enlightenment-now-case\"."
+  (thread-last cite-key
+    (replace-regexp-in-string "\\([a-zA-Z]\\)\\([0-9]\\)" "\\1-\\2")
+    (replace-regexp-in-string "\\([0-9]\\)\\([a-zA-Z]\\)" "\\1-\\2")
+    (replace-regexp-in-string "\\([a-z]\\)\\([A-Z]\\)" "\\1-\\2")
+    (downcase)))
+
+(defun stafforini--heading-quote-locator ()
+  "Return the cite locator from the blockquote under the heading at point.
+Search for a [cite:@KEY, LOCATOR] line after #+end_quote.  Return
+LOCATOR as a string, or nil if not found."
+  (save-excursion
+    (org-back-to-heading t)
+    (let ((bound (save-excursion
+                   (outline-next-heading)
+                   (or (point) (point-max)))))
+      (when (re-search-forward "#\\+end_quote" bound t)
+        (when (re-search-forward "\\[cite:@[^],]+,\\s-*\\(.+?\\)\\]" bound t)
+          (match-string 1))))))
 
 ;;;; Hugo custom front matter
 
@@ -476,6 +560,7 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("q" "Export quotes" stafforini-export-all-quotes)]
    ["Generate"
     ("p" "Publish note" stafforini-publish-note)
+    ("P" "Publish quote" stafforini-publish-quote)
     ("F" "Set Hugo property" stafforini-set-hugo-property)
     ("w" "Update works" stafforini-update-works)
     ("b" "Update backlinks" stafforini-update-backlinks)
