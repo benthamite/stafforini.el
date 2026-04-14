@@ -769,9 +769,9 @@ a longer one for the alt text.  Both are presented for editing before use."
 ;;;###autoload
 (defun stafforini-insert-topics ()
   "Insert a :TOPICS: property with tags selected from known tags.
-Reads completion candidates from `stafforini-tags-file'.
-Prompts repeatedly; press \\`C-g' when done selecting.  The
-collected tags are inserted as a middot-separated :TOPICS:
+Reads completion candidates from `stafforini-tags-file' and
+prompts with `completing-read-multiple' (comma-separated).
+The collected tags are inserted as a middot-separated :TOPICS:
 property on the current heading."
   (interactive)
   (let ((tags (stafforini-insert-topics--select)))
@@ -798,23 +798,9 @@ property on the current heading."
     (user-error "Tags file not found: %s" stafforini-tags-file)))
 
 (defun stafforini-insert-topics--select ()
-  "Prompt the user to select tags, returning a list of strings."
-  (let ((candidates (stafforini-insert-topics--read-tags))
-        (selected '())
-        (seen (make-hash-table :test #'equal)))
-    (condition-case nil
-        (while t
-          (let* ((prompt (if selected
-                             (format "Select topic (%d selected, C-g to finish): "
-                                     (length selected))
-                           "Select topic: "))
-                 (choice (completing-read prompt candidates nil nil)))
-            (unless (or (string-empty-p choice)
-                        (gethash choice seen))
-              (puthash choice t seen)
-              (push choice selected))))
-      (quit nil))
-    selected))
+  "Prompt the user to select tags via `completing-read-multiple'."
+  (let ((candidates (stafforini-insert-topics--read-tags)))
+    (completing-read-multiple "Select topics (comma-separated): " candidates)))
 
 (defun stafforini-insert-topics--sort-pred (a b)
   "Case-insensitive sort predicate for tag strings A and B."

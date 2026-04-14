@@ -88,4 +88,4 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 | =M-x stafforini-full-rebuild=       | Run the full pipeline sequentially (7 steps)           |
 | =M-x stafforini-deploy=            | Build and deploy to Netlify                            |
 | =M-x stafforini-insert-image=       | Insert an image with AI-generated filename and alt text |
-| =M-x stafforini-insert-topics=      | Insert :TOPICS: property from known tags via completion |
+| =M-x stafforini-insert-topics=      | Insert :TOPICS: property via multi-tag completion       |

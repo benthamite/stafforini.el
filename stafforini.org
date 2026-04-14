@@ -299,9 +299,9 @@ deleted after copying.
 The command ~stafforini-insert-topics~ inserts a =:TOPICS:= property on
 the current heading.  It reads completion candidates from the JSON file
 specified by ~stafforini-tags-file~ (default =data/all-tags.json= in
-the site repository) and prompts repeatedly with ~completing-read~;
-press =C-g= when you are done selecting.  Duplicate selections are
-silently ignored.
+the site repository) and prompts with ~completing-read-multiple~,
+allowing you to select multiple tags in a single prompt by separating
+them with commas.
 
 The collected tags are sorted alphabetically and written as a
 middot-separated plain-text property value via ~org-entry-put~, e.g.
