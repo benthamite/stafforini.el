@@ -62,6 +62,8 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 2. =M-x stafforini-start-server= to verify locally.
 3. =M-x stafforini-deploy=.
 
+With a prefix argument (=C-u M-x stafforini-deploy=, or =C-u D= in the menu), the command runs a quick deploy that skips data regeneration and PDF processing.  Use this when only templates or styles changed.
+
 ** Server management
 
 - =M-x stafforini-start-server= — starts (or restarts) the Hugo dev server. Always kills any existing server first to ensure a fresh build.
@@ -86,6 +88,6 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 | =M-x stafforini-stop-server=        | Stop the Hugo dev server                               |
 | =M-x stafforini-rebuild-search-index= | Rebuild the Pagefind search index                    |
 | =M-x stafforini-full-rebuild=       | Run the full pipeline sequentially (7 steps)           |
-| =M-x stafforini-deploy=            | Build and deploy to Netlify                            |
+| =M-x stafforini-deploy=            | Build and deploy to Netlify (=C-u= for quick deploy)   |
 | =M-x stafforini-insert-image=       | Insert an image with AI-generated filename and alt text |
 | =M-x stafforini-insert-topics=      | Insert :TOPICS: property via multi-tag completion       |

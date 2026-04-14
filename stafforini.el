@@ -498,10 +498,13 @@ topic links."
   (stafforini--run-script "inject-lastmod.py"))
 
 ;;;###autoload
-(defun stafforini-deploy ()
-  "Build the Hugo site and deploy it to Netlify."
-  (interactive)
-  (stafforini--run-script "deploy.sh"))
+(defun stafforini-deploy (&optional quick)
+  "Build the Hugo site and deploy it to Netlify.
+With prefix argument QUICK, skip data regeneration and PDF
+processing (just clean, build, index, deploy)."
+  (interactive "P")
+  (stafforini--run-script
+   (if quick "deploy.sh --quick" "deploy.sh")))
 
 ;;;###autoload
 (defun stafforini-start-server ()
