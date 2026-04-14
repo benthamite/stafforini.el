@@ -768,40 +768,62 @@ a longer one for the alt text.  Both are presented for editing before use."
 
 ;;;###autoload
 (defun stafforini-insert-topics ()
-  "Insert a Topics line with org-roam links at point.
-Prompts repeatedly for org-roam nodes.  Press \\`C-g' when done
-selecting; the collected topics are then inserted as a single
-\"Topics:\" line with middot-separated org-roam links, sorted
-alphabetically by title."
+  "Insert a :TOPICS: property with tags selected from known tags.
+Reads completion candidates from `stafforini-tags-file'.
+Prompts repeatedly; press \\`C-g' when done selecting.  The
+collected tags are inserted as a middot-separated :TOPICS:
+property on the current heading."
   (interactive)
-  (require 'org-roam)
-  (let ((nodes '())
-        (seen-ids (make-hash-table :test #'equal)))
+  (let ((tags (stafforini-insert-topics--select)))
+    (if (null tags)
+        (message "No topics selected.")
+      (stafforini-insert-topics--write
+       (sort tags #'stafforini-insert-topics--sort-pred)))))
+
+(defcustom stafforini-tags-file
+  (expand-file-name
+   "~/My Drive/repos/stafforini.com/data/all-tags.json")
+  "Path to the JSON file listing all known tags."
+  :type 'file
+  :group 'stafforini)
+
+(defun stafforini-insert-topics--read-tags ()
+  "Return a list of known tag strings from `stafforini-tags-file'."
+  (if (file-exists-p stafforini-tags-file)
+      (json-parse-string
+       (with-temp-buffer
+         (insert-file-contents stafforini-tags-file)
+         (buffer-string))
+       :array-type 'list)
+    (user-error "Tags file not found: %s" stafforini-tags-file)))
+
+(defun stafforini-insert-topics--select ()
+  "Prompt the user to select tags, returning a list of strings."
+  (let ((candidates (stafforini-insert-topics--read-tags))
+        (selected '())
+        (seen (make-hash-table :test #'equal)))
     (condition-case nil
         (while t
-          (let* ((prompt (if nodes
+          (let* ((prompt (if selected
                              (format "Select topic (%d selected, C-g to finish): "
-                                     (length nodes))
+                                     (length selected))
                            "Select topic: "))
-                 (node (org-roam-node-read nil nil nil t prompt)))
-            (unless (gethash (org-roam-node-id node) seen-ids)
-              (puthash (org-roam-node-id node) t seen-ids)
-              (push node nodes))))
+                 (choice (completing-read prompt candidates nil nil)))
+            (unless (or (string-empty-p choice)
+                        (gethash choice seen))
+              (puthash choice t seen)
+              (push choice selected))))
       (quit nil))
-    (if (null nodes)
-        (message "No topics selected.")
-      (setq nodes (sort nodes
-                        (lambda (a b)
-                          (string< (downcase (org-roam-node-title a))
-                                   (downcase (org-roam-node-title b))))))
-      (let ((links (mapconcat
-                    (lambda (node)
-                      (format "[[id:%s][%s]]"
-                              (org-roam-node-id node)
-                              (org-roam-node-title node)))
-                    nodes
-                    " · ")))
-        (insert (format "\nTopics: %s\n" links))))))
+    selected))
+
+(defun stafforini-insert-topics--sort-pred (a b)
+  "Case-insensitive sort predicate for tag strings A and B."
+  (string< (downcase a) (downcase b)))
+
+(defun stafforini-insert-topics--write (tags)
+  "Insert TAGS as a :TOPICS: property on the current heading."
+  (let ((value (mapconcat #'identity tags " · ")))
+    (org-entry-put nil "TOPICS" value)))
 
 (provide 'stafforini)
 ;;; stafforini.el ends here

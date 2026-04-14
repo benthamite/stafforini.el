@@ -295,15 +295,18 @@ deleted after copying.
 :END:
 
 #+findex: stafforini-insert-topics
-The command ~stafforini-insert-topics~ inserts a "Topics:" line at point
-containing org-roam links.  It prompts repeatedly for org-roam nodes
-using ~org-roam-node-read~; press =C-g= when you are done selecting.
-Duplicate selections (by Org ID) are silently ignored.
+#+vindex: stafforini-tags-file
+The command ~stafforini-insert-topics~ inserts a =:TOPICS:= property on
+the current heading.  It reads completion candidates from the JSON file
+specified by ~stafforini-tags-file~ (default =data/all-tags.json= in
+the site repository) and prompts repeatedly with ~completing-read~;
+press =C-g= when you are done selecting.  Duplicate selections are
+silently ignored.
 
-The collected topics are sorted alphabetically by title and inserted as
-a single line with middot-separated (~·~) org-roam ID links in the
-format =Topics: [[id:...][Title]] · [[id:...][Title]]=.  If no topics
-are selected, the command displays a message and inserts nothing.
+The collected tags are sorted alphabetically and written as a
+middot-separated plain-text property value via ~org-entry-put~, e.g.
+=:TOPICS: art · music · philosophy=.  If no tags are selected, the
+command displays a message and inserts nothing.
 
 * Transient menu
 :PROPERTIES:
