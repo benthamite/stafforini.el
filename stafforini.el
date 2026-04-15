@@ -479,17 +479,6 @@ topic links."
   (interactive)
   (stafforini--run-script "generate-citing-notes.py"))
 
-;;;###autoload
-(defun stafforini-generate-quote-topics ()
-  "Generate the quote-topics data file from :TOPICS: properties."
-  (interactive)
-  (stafforini--run-script "generate-quote-topics.py"))
-
-;;;###autoload
-(defun stafforini-generate-note-categories ()
-  "Generate the note-categories data files from :CATEGORY: properties."
-  (interactive)
-  (stafforini--run-script "generate-note-categories.py"))
 
 ;;;###autoload
 (defun stafforini-inject-lastmod ()
@@ -582,8 +571,7 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("t" "Topic pages" stafforini-generate-topic-pages)
     ("c" "Citing notes" stafforini-generate-citing-notes)
     ("l" "Inject lastmod" stafforini-inject-lastmod)
-    ("Q" "Quote topics" stafforini-generate-quote-topics)
-    ("N" "Note categories" stafforini-generate-note-categories)]
+]
    ["Build & deploy"
     ("R" "Full rebuild" stafforini-full-rebuild)
     ("i" "Rebuild search index" stafforini-rebuild-search-index)

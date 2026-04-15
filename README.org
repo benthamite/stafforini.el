@@ -48,7 +48,7 @@ Use these when you've changed a specific upstream source /without/ editing org c
 Use these after mass edits, migrations, or whenever you want to ensure everything is in sync. Each export command handles its full pipeline automatically — no need to run intermediate scripts.
 
 - =M-x stafforini-export-all-notes= — exports all org notes, then runs inject-lastmod, generate-backlinks, and generate-citing-notes.
-- =M-x stafforini-export-all-quotes= — generates the ID→slug map, exports all org quotes, then generates work pages and topic pages.
+- =M-x stafforini-export-all-quotes= — generates the ID→slug map, exports all org quotes, then generates work pages and topic pages. Tag injection (from =:TOPICS:= properties) runs as part of both pipelines.
 
 After batch exporting, restart the server with =M-x stafforini-start-server= to pick up all changes.
 
