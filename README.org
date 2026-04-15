@@ -29,6 +29,14 @@ For routine single-file changes, use ox-hugo's interactive export. Hugo's live r
 2. Export with =C-c C-e H A= (all subtrees).
 3. Hugo live reload picks it up.
 
+*** Org-transclusion support
+
+Org files may contain =#+transclude:= directives (from =org-transclusion.el=) that pull content from other files.  Both export paths handle these automatically:
+
+- *Interactive export* (=C-c C-e H H=): advice on ~org-hugo-export-wim-to-md~ temporarily expands all transclusions before export and removes them afterward, so the source buffer is not permanently modified.  This requires =org-transclusion= to be installed but does not require ~org-transclusion-mode~ to be active.
+
+- *Batch export* (=M-x stafforini-export-all-notes=): the batch pipeline calls ~org-transclusion-add-all~ per file via ~export--expand-transclusions~ in =export-common.el=.
+
 ** Targeted updates
 
 Use these when you've changed a specific upstream source /without/ editing org content. Each command updates only what it needs to.

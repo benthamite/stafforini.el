@@ -185,6 +185,37 @@ markdown file paths from the current org buffer context."
   (advice-add 'org-hugo-export-wim-to-md :after
               #'stafforini--fixup-after-export))
 
+;;;; Org-transclusion support for interactive export
+
+(defun stafforini--expand-transclusions-for-export (orig-fn &rest args)
+  "Temporarily expand transclusions around ORIG-FN called with ARGS.
+When `org-transclusion-mode' is not already active, check whether
+the buffer contains #+transclude: directives.  If so, expand them
+before export and remove them afterward."
+  (let ((needs-expansion (stafforini--buffer-has-transclusions-p)))
+    (when needs-expansion
+      (stafforini--activate-transclusions))
+    (unwind-protect
+        (apply orig-fn args)
+      (when needs-expansion
+        (org-transclusion-remove-all)))))
+
+(defun stafforini--buffer-has-transclusions-p ()
+  "Return non-nil if the buffer has unexpanded #+transclude: directives."
+  (and (not (bound-and-true-p org-transclusion-mode))
+       (save-excursion
+         (goto-char (point-min))
+         (re-search-forward "^#\\+transclude:" nil t))))
+
+(defun stafforini--activate-transclusions ()
+  "Load `org-transclusion' and expand all directives in the buffer."
+  (require 'org-transclusion)
+  (org-transclusion-add-all))
+
+(with-eval-after-load 'ox-hugo
+  (advice-add 'org-hugo-export-wim-to-md :around
+              #'stafforini--expand-transclusions-for-export))
+
 ;;;; Duplicate-drawer monitor
 
 ;; Catch PROPERTIES drawer duplication (a known corruption mode) in real time.
