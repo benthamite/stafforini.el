@@ -245,6 +245,79 @@ Added to `after-save-hook' in org buffers to catch corruption early."
           (lambda ()
             (add-hook 'after-save-hook #'stafforini--check-duplicate-drawers nil t)))
 
+;;;; #+lastmod: keyword stamping
+
+;; Maintains the file-level `#+lastmod:' keyword as the authoritative
+;; last-modification date for the stafforini.com pipeline.
+;; inject-lastmod.py prefers this keyword over git history, which is
+;; noisy: any commit touching a file bumps its date, including bulk
+;; mechanical ones (property migrations, merge commits, etc.).
+
+(defcustom stafforini-lastmod-directories
+  (list (expand-file-name "~/My Drive/notes/")
+        (expand-file-name "~/My Drive/bibliographic-notes/"))
+  "Directories whose org files get `#+lastmod:' stamped on save.
+Files outside these directories are left untouched."
+  :type '(repeat directory)
+  :group 'stafforini)
+
+(defcustom stafforini-lastmod-skip-commands '()
+  "Commands whose saves should NOT update `#+lastmod:'.
+Extend this list to exclude bulk-mechanical operations (e.g.
+property drawer migrations) that sweep many files without
+representing real content edits."
+  :type '(repeat symbol)
+  :group 'stafforini)
+
+(defun stafforini-maybe-stamp-lastmod ()
+  "Stamp `#+lastmod:' on save when the current buffer qualifies.
+Intended for `before-save-hook' in note org buffers.  No-op in
+batch mode, outside note directories, or when `this-command' is
+listed in `stafforini-lastmod-skip-commands'."
+  (when (stafforini--should-stamp-lastmod-p)
+    (stafforini--update-lastmod-keyword)))
+
+(defun stafforini--should-stamp-lastmod-p ()
+  "Return non-nil if the current save should update `#+lastmod:'."
+  (and (not noninteractive)
+       (derived-mode-p 'org-mode)
+       (stafforini--note-file-p)
+       (not (memq this-command stafforini-lastmod-skip-commands))))
+
+(defun stafforini--note-file-p ()
+  "Return non-nil if the buffer visits a file under a note directory."
+  (when buffer-file-name
+    (let ((file (expand-file-name buffer-file-name)))
+      (seq-some (lambda (dir) (string-prefix-p (expand-file-name dir) file))
+                stafforini-lastmod-directories))))
+
+(defun stafforini--update-lastmod-keyword ()
+  "Insert or update the `#+lastmod:' keyword with the current time.
+Placed immediately after the first `#+title:' line if present,
+otherwise at the top of the buffer."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (let ((timestamp (format-time-string "%Y-%m-%dT%H:%M:%S")))
+        (goto-char (point-min))
+        (cond
+         ((re-search-forward "^#\\+lastmod:.*$" nil t)
+          (replace-match (format "#+lastmod: %s" timestamp) t t))
+         ((progn (goto-char (point-min))
+                 (re-search-forward "^#\\+title:.*$" nil t))
+          (end-of-line)
+          (insert (format "\n#+lastmod: %s" timestamp)))
+         (t
+          (goto-char (point-min))
+          (insert (format "#+lastmod: %s\n" timestamp))))))))
+
+(defun stafforini--enable-lastmod-stamping ()
+  "Attach `stafforini-maybe-stamp-lastmod' locally when visiting a note."
+  (when (stafforini--note-file-p)
+    (add-hook 'before-save-hook #'stafforini-maybe-stamp-lastmod nil t)))
+
+(add-hook 'org-mode-hook #'stafforini--enable-lastmod-stamping)
+
 ;;;; Commands
 
 ;;;###autoload

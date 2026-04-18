@@ -72,6 +72,32 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 
 With a prefix argument (=C-u M-x stafforini-deploy=, or =C-u D= in the menu), the command runs a quick deploy that skips content export, data regeneration, and PDF processing (passing =--quick= to =deploy.sh=).  Use this when only templates, styles, or static assets changed after a recent full export.
 
+** Automatic behaviors
+
+These run silently as you work on note org files. No command to
+invoke — configure via =M-x customize-group RET stafforini=.
+
+*** =#+lastmod:= keyword stamping
+
+Saving an org file under =stafforini-lastmod-directories= (by default
+=~/My Drive/notes/= and =~/My Drive/bibliographic-notes/=) updates a
+file-level =#+lastmod:= keyword with the current timestamp. The
+stafforini.com pipeline's =inject-lastmod.py= reads this keyword as
+the authoritative last-modification date, in preference to git
+history.
+
+The hook is a no-op in batch mode (=emacs --script=, etc.) and for
+any command listed in =stafforini-lastmod-skip-commands=. Extend that
+list to silence sweeping interactive operations (bulk property
+migrations, =dired-do-query-replace-regexp=, etc.) that modify many
+files without representing real content edits.
+
+*** Duplicate =PROPERTIES= drawer warning
+
+After saving an org file, a warning is displayed if the first heading
+has two consecutive =:PROPERTIES:= drawers — a known corruption mode
+caused by an intermittent ox-hugo bug.
+
 ** Server management
 
 - =M-x stafforini-start-server= — starts (or restarts) the Hugo dev server. Always kills any existing server first to ensure a fresh build.
