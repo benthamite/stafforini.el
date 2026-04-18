@@ -523,8 +523,7 @@ topic links."
 With prefix argument QUICK, skip data regeneration and PDF
 processing (just clean, build, index, deploy)."
   (interactive "P")
-  (stafforini--run-script
-   (if quick "deploy.sh --quick" "deploy.sh")))
+  (stafforini--run-script "deploy.sh" (when quick "--quick")))
 
 ;;;###autoload
 (defun stafforini-start-server ()

@@ -229,7 +229,10 @@ rebuild.  Internally it runs =build-search-index.sh=.
 The command ~stafforini-deploy~ builds the Hugo site and deploys it to
 Netlify.  Run the needed export and update steps first, verify locally
 with ~stafforini-start-server~, and then deploy.  Internally it runs
-=deploy.sh=.
+=deploy.sh=.  With a prefix argument (=C-u M-x stafforini-deploy=), the
+command passes =--quick= to =deploy.sh=, which skips content export,
+data regeneration, and PDF processing.  Use the quick form when only
+templates, styles, or static assets changed after a recent full export.
 
 ** Server management
 :PROPERTIES:

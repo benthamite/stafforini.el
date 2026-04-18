@@ -70,7 +70,7 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 2. =M-x stafforini-start-server= to verify locally.
 3. =M-x stafforini-deploy=.
 
-With a prefix argument (=C-u M-x stafforini-deploy=, or =C-u D= in the menu), the command runs a quick deploy that skips data regeneration and PDF processing.  Use this when only templates or styles changed.
+With a prefix argument (=C-u M-x stafforini-deploy=, or =C-u D= in the menu), the command runs a quick deploy that skips content export, data regeneration, and PDF processing (passing =--quick= to =deploy.sh=).  Use this when only templates, styles, or static assets changed after a recent full export.
 
 ** Server management
 
