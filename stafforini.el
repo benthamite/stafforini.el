@@ -681,15 +681,26 @@ alphabetically so diffs stay stable across runs."
         (lambda (a b) (string< (car a) (car b)))))
 
 (defun stafforini--apply-takedowns ()
-  "Run the minimal pipeline that propagates blocklist changes.
-Runs `generate-work-pages.py' (which rewrites works.json, removes
-work pages, and drops quote markdown files whose work is excluded)
-followed by `verify-site.py' against the dev build as a safety gate."
+  "Run the local takedown pipeline and offer to deploy on success.
+Runs `generate-work-pages.py' (rewrites works.json, removes work
+pages, drops quote markdown files whose work is excluded), then
+`process-pdfs.py' (removes local PDFs and thumbnails), then
+`verify-site.py' against the dev build as a safety gate.  Once the
+local state matches the blocklist, prompts to trigger a full deploy
+so the removals reach production (Netlify HTML + R2 PDF bucket)."
   (stafforini--compile
    (concat (stafforini--script-command "generate-work-pages.py")
            " && "
+           (stafforini--script-command "process-pdfs.py")
+           " && "
            (stafforini--script-command "verify-site.py") " --build dev")
-   "*stafforini-apply-takedowns*"))
+   "*stafforini-apply-takedowns*"
+   #'stafforini--maybe-deploy-takedown))
+
+(defun stafforini--maybe-deploy-takedown ()
+  "Prompt after a successful takedown pipeline to trigger a full deploy."
+  (when (y-or-n-p "Takedown applied locally.  Deploy to Netlify + R2 now? ")
+    (stafforini-deploy)))
 
 ;;;###autoload
 (defun stafforini-update-backlinks ()
