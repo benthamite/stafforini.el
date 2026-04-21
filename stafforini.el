@@ -3,7 +3,7 @@
 ;; Author: Pablo Stafforini
 ;; URL: https://github.com/benthamite/stafforini.el
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (paths "0.1") (gptel "0.9") (org-roam "2.0") (transient "0.4"))
+;; Package-Requires: ((emacs "29.1") (citar "1.4") (paths "0.1") (gptel "0.9") (org-roam "2.0") (transient "0.4"))
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -561,6 +561,8 @@ hyperlink anywhere on the site."
   :type 'file
   :group 'stafforini)
 
+(declare-function citar-select-ref "citar")
+
 ;;;###autoload
 (defun stafforini-exclude-work (cite-key &optional reason)
   "Add CITE-KEY to the site's takedown blocklist with optional REASON.
@@ -570,9 +572,10 @@ is a non-empty string, under `reason' to
 to run the takedown pipeline so the exclusion takes effect on the
 next build.
 
-Interactively, defaults CITE-KEY to the cite key extracted from the
-current bibliographic note's :ROAM_REFS: property (if any), and
-prompts for REASON.  Leaving REASON empty records no reason field."
+Interactively, prompts for CITE-KEY via `citar-select-ref' (the same
+completing-read interface used by `citar-insert-citation'), filtered
+to exclude keys already on the blocklist, then prompts for REASON.
+Leaving REASON empty records no reason field."
   (interactive (stafforini--exclude-work-prompt))
   (when (or (null cite-key) (string-empty-p cite-key))
     (user-error "Cite key is required"))
@@ -590,15 +593,18 @@ prompts for REASON.  Leaving REASON empty records no reason field."
 (defun stafforini--exclude-work-prompt ()
   "Read CITE-KEY and optional REASON for `stafforini-exclude-work'.
 Returns a list suitable for `interactive' splicing."
-  (let* ((default (ignore-errors (stafforini--file-cite-key)))
-         (prompt (if default
-                     (format "Cite key to exclude (default %s): " default)
-                   "Cite key to exclude: "))
-         (key (string-trim (read-string prompt nil nil default)))
+  (require 'citar)
+  (let* ((already (stafforini--excluded-cite-keys))
+         (key (citar-select-ref
+               :filter (lambda (citekey) (not (member citekey already)))))
          (raw (read-string "Reason (optional): "))
          (reason (let ((trimmed (string-trim raw)))
                    (and (not (string-empty-p trimmed)) trimmed))))
     (list key reason)))
+
+(defun stafforini--excluded-cite-keys ()
+  "Return the list of cite keys currently on the takedown blocklist."
+  (mapcar #'car (stafforini--read-excluded-works)))
 
 (defun stafforini--build-exclusion-fields (reason)
   "Return the alist of JSON fields to store for a new exclusion.
