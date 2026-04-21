@@ -116,6 +116,7 @@ caused by an intermittent ox-hugo bug.
 | =M-x stafforini-export-all-notes=   | Export notes + inject lastmod, backlinks, citing-notes |
 | =M-x stafforini-export-all-quotes=  | ID-slug map + export quotes + work pages, topic pages  |
 | =M-x stafforini-update-works=       | Generate/update work pages from BibTeX data            |
+| =M-x stafforini-exclude-work=       | Add a cite key to the takedown blocklist               |
 | =M-x stafforini-update-backlinks=   | Regenerate backlink data from org-roam                 |
 | =M-x stafforini-process-pdfs=       | Strip annotations from PDFs and generate thumbnails    |
 | =M-x stafforini-start-server=       | Start Hugo dev server (always restarts for fresh data) |

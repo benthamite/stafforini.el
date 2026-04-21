@@ -550,6 +550,141 @@ Restarts the Hugo dev server on success."
   (stafforini--run-script "generate-work-pages.py" "--skip-postprocess"
                           #'stafforini-start-server))
 
+;;;; Takedown blocklist
+
+(defcustom stafforini-excluded-works-file
+  (file-name-concat stafforini-hugo-dir "data/excluded-works.json")
+  "Path to the takedown blocklist JSON file.
+Entries listed here are suppressed from the published site: no work
+page, no quote pages citing the work, no PDF on R2, and no citation
+hyperlink anywhere on the site."
+  :type 'file
+  :group 'stafforini)
+
+;;;###autoload
+(defun stafforini-exclude-work (cite-key &optional reason)
+  "Add CITE-KEY to the site's takedown blocklist with optional REASON.
+Appends an entry with the current date under `added' and, if REASON
+is a non-empty string, under `reason' to
+`stafforini-excluded-works-file'.  After the JSON is written, offers
+to run the takedown pipeline so the exclusion takes effect on the
+next build.
+
+Interactively, defaults CITE-KEY to the cite key extracted from the
+current bibliographic note's :ROAM_REFS: property (if any), and
+prompts for REASON.  Leaving REASON empty records no reason field."
+  (interactive (stafforini--exclude-work-prompt))
+  (when (or (null cite-key) (string-empty-p cite-key))
+    (user-error "Cite key is required"))
+  (let* ((existing (stafforini--read-excluded-works))
+         (fields (stafforini--build-exclusion-fields reason))
+         (updated (cons (cons cite-key fields)
+                        (assoc-delete-all cite-key (copy-sequence existing)))))
+    (stafforini--write-excluded-works updated)
+    (message "Recorded takedown for %s%s"
+             cite-key
+             (if reason (format " (%s)" reason) ""))
+    (when (y-or-n-p "Run takedown pipeline now (generate-work-pages + verify-site)? ")
+      (stafforini--apply-takedowns))))
+
+(defun stafforini--exclude-work-prompt ()
+  "Read CITE-KEY and optional REASON for `stafforini-exclude-work'.
+Returns a list suitable for `interactive' splicing."
+  (let* ((default (ignore-errors (stafforini--file-cite-key)))
+         (prompt (if default
+                     (format "Cite key to exclude (default %s): " default)
+                   "Cite key to exclude: "))
+         (key (string-trim (read-string prompt nil nil default)))
+         (raw (read-string "Reason (optional): "))
+         (reason (let ((trimmed (string-trim raw)))
+                   (and (not (string-empty-p trimmed)) trimmed))))
+    (list key reason)))
+
+(defun stafforini--build-exclusion-fields (reason)
+  "Return the alist of JSON fields to store for a new exclusion.
+REASON, if non-nil, is added under the `reason' key.  Today's date
+is always added under `added'."
+  (append (list (cons "added" (format-time-string "%Y-%m-%d")))
+          (when reason (list (cons "reason" reason)))))
+
+(defun stafforini--read-excluded-works ()
+  "Return the takedown blocklist as an alist.
+Each element is (CITE-KEY . FIELDS-ALIST), both using string keys.
+Returns nil if the blocklist file is missing or empty."
+  (require 'json)
+  (let ((file stafforini-excluded-works-file))
+    (when (and (file-exists-p file)
+               (> (file-attribute-size (file-attributes file)) 0))
+      (with-temp-buffer
+        (insert-file-contents file)
+        (let ((text (string-trim (buffer-string))))
+          (unless (string-empty-p text)
+            (stafforini--hash-table-to-alist
+             (json-parse-string text :object-type 'hash-table
+                                :null-object nil :false-object nil))))))))
+
+(defun stafforini--hash-table-to-alist (table)
+  "Recursively convert TABLE to an alist with string keys."
+  (let (result)
+    (maphash (lambda (key value)
+               (push (cons key
+                           (if (hash-table-p value)
+                               (stafforini--hash-table-to-alist value)
+                             value))
+                     result))
+             table)
+    result))
+
+(defun stafforini--write-excluded-works (alist)
+  "Write ALIST to `stafforini-excluded-works-file' as pretty JSON.
+Both top-level and nested entries are serialized with keys sorted
+alphabetically so diffs stay stable across runs."
+  (require 'json)
+  (with-temp-file stafforini-excluded-works-file
+    (stafforini--insert-exclusion-json alist)))
+
+(defun stafforini--insert-exclusion-json (alist)
+  "Insert ALIST into the current buffer as pretty-printed blocklist JSON."
+  (let ((sorted (stafforini--sort-alist-by-key alist)))
+    (insert "{\n")
+    (stafforini--insert-comma-separated sorted #'stafforini--insert-exclusion-entry)
+    (insert "\n}\n")))
+
+(defun stafforini--insert-exclusion-entry (entry)
+  "Insert a single top-level blocklist ENTRY (CITE-KEY . FIELDS-ALIST)."
+  (let ((fields (stafforini--sort-alist-by-key (cdr entry))))
+    (insert "  " (json-encode-string (car entry)) ": {\n")
+    (stafforini--insert-comma-separated fields #'stafforini--insert-exclusion-field)
+    (insert "\n  }")))
+
+(defun stafforini--insert-exclusion-field (field)
+  "Insert one key/value FIELD of a blocklist entry into the current buffer."
+  (insert "    " (json-encode-string (car field))
+          ": " (json-encode-string (cdr field))))
+
+(defun stafforini--insert-comma-separated (items insert-fn)
+  "Apply INSERT-FN to each of ITEMS, separating successive inserts with a comma."
+  (let ((first t))
+    (dolist (item items)
+      (if first (setq first nil) (insert ",\n"))
+      (funcall insert-fn item))))
+
+(defun stafforini--sort-alist-by-key (alist)
+  "Return a copy of ALIST sorted by car using `string<'."
+  (sort (copy-sequence alist)
+        (lambda (a b) (string< (car a) (car b)))))
+
+(defun stafforini--apply-takedowns ()
+  "Run the minimal pipeline that propagates blocklist changes.
+Runs `generate-work-pages.py' (which rewrites works.json, removes
+work pages, and drops quote markdown files whose work is excluded)
+followed by `verify-site.py' against the dev build as a safety gate."
+  (stafforini--compile
+   (concat (stafforini--script-command "generate-work-pages.py")
+           " && "
+           (stafforini--script-command "verify-site.py") " --build dev")
+   "*stafforini-apply-takedowns*"))
+
 ;;;###autoload
 (defun stafforini-update-backlinks ()
   "Regenerate backlink data from the org-roam database.
@@ -660,11 +795,14 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
 (transient-define-prefix stafforini-menu ()
   "Stafforini.com build commands."
   [["Export"
-    ("n" "Export notes" stafforini-export-all-notes)
-    ("q" "Export quotes" stafforini-export-all-quotes)]
+    ("N" "Export notes" stafforini-export-all-notes)
+    ("Q" "Export quotes" stafforini-export-all-quotes)
+    ""
+    "Publish"
+    ("n" "Publish note" stafforini-publish-note)
+    ("q" "Publish quote" stafforini-publish-quote)
+    ("x" "Exclude work" stafforini-exclude-work)]
    ["Generate"
-    ("p" "Publish note" stafforini-publish-note)
-    ("P" "Publish quote" stafforini-publish-quote)
     ("F" "Set Hugo property" stafforini-set-hugo-property)
     ("w" "Update works" stafforini-update-works)
     ("b" "Update backlinks" stafforini-update-backlinks)
@@ -674,15 +812,16 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
     ("t" "Topic pages" stafforini-generate-topic-pages)
     ("c" "Citing notes" stafforini-generate-citing-notes)
     ("l" "Inject lastmod" stafforini-inject-lastmod)
-]
+    ]
    ["Build & deploy"
     ("R" "Full rebuild" stafforini-full-rebuild)
     ("i" "Rebuild search index" stafforini-rebuild-search-index)
     ("D" "Deploy to Netlify" stafforini-deploy)]
    ["Server"
     ("s" "Start server" stafforini-start-server)
-    ("k" "Stop server" stafforini-stop-server)]
-   ["Insert"
+    ("k" "Stop server" stafforini-stop-server)
+    ""
+    "Insert"
     ("I" "Insert image" stafforini-insert-image)
     ("T" "Insert topics" stafforini-insert-topics)]])
 
