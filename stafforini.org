@@ -210,6 +210,7 @@ corresponding Org source files.  Internally it runs =inject-lastmod.py=.
 #+findex: stafforini-full-rebuild
 #+findex: stafforini-rebuild-search-index
 #+findex: stafforini-deploy
+#+findex: stafforini-deploy-fast-note
 The command ~stafforini-full-rebuild~ runs the entire build pipeline
 sequentially in a single compilation buffer.  The seven steps are:
 prepare notes, export notes (full), export quotes (full), process PDFs,
@@ -233,6 +234,13 @@ with ~stafforini-start-server~, and then deploy.  Internally it runs
 command passes =--quick= to =deploy.sh=, which skips content export,
 data regeneration, and PDF processing.  Use the quick form when only
 templates, styles, or static assets changed after a recent full export.
+
+The command ~stafforini-deploy-fast-note~ deploys a minor
+already-exported note body edit.  Internally it passes =--fast-note= to
+=deploy.sh=, preserving the existing =public/= snapshot and Pagefind
+search index.  Use the normal deploy path for slug, date, tag,
+citation, link, template, quote, work-page, PDF, new-note, or
+deleted-note changes.
 
 ** Server management
 :PROPERTIES:

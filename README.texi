@@ -13,14 +13,17 @@
 
 @finalout
 @titlepage
+@title stafforini.el
 @author Pablo Stafforini
 @end titlepage
+
+@contents
 
 @ifnottex
 @node Top
 @top stafforini.el
 
-Emacs commands for building and previewing the @uref{https://github.com/benthamite/stafforini.com, stafforini.com} Hugo site. @*
+Emacs commands for building and previewing the @uref{https://github.com/benthamite/stafforini.com, stafforini.com} Hugo site.
 
 @end ifnottex
 
@@ -39,12 +42,19 @@ Workflows
 * Batch export::
 * Full rebuild::
 * Deploying::
+* Automatic behaviors::
 * Server management::
 
 Day-to-day editing
 
 * Editing a note::
 * Editing a quote::
+* Org-transclusion support::
+
+Automatic behaviors
+
+* @samp{#+lastmod} keyword stamping::
+* Duplicate @samp{PROPERTIES} drawer warning::
 
 Server management
 
@@ -54,16 +64,16 @@ Server management
 @end menu
 
 @node Overview
-@unnumbered Overview
+@chapter Overview
 
-This package wraps the project's Python and shell build scripts, running them asynchronously via @samp{compile} so output appears in a compilation buffer with proper error highlighting. See @samp{PUBLISHING.md} in the Hugo repo for additional details. @*
+This package wraps the project's Python and shell build scripts, running them asynchronously via @samp{compile} so output appears in a compilation buffer with proper error highlighting. See @samp{PUBLISHING.md} in the Hugo repo for additional details.
 
-The development repository is on @uref{https://github.com/benthamite/stafforini.el, GitHub}. @*
+The development repository is on @uref{https://github.com/benthamite/stafforini.el, GitHub}.
 
 @node Workflows
-@unnumbered Workflows
+@chapter Workflows
 
-There are two tiers of commands: @strong{interactive export} for single-file edits during day-to-day work, and @strong{batch commands} for bulk operations. You rarely need both at once. @*
+There are two tiers of commands: @strong{interactive export} for single-file edits during day-to-day work, and @strong{batch commands} for bulk operations. You rarely need both at once.
 
 @menu
 * Day-to-day editing::
@@ -71,104 +81,157 @@ There are two tiers of commands: @strong{interactive export} for single-file edi
 * Batch export::
 * Full rebuild::
 * Deploying::
+* Automatic behaviors::
 * Server management::
 @end menu
 
 @node Day-to-day editing
-@unnumberedsec Day-to-day editing
+@section Day-to-day editing
 
-For routine single-file changes, use ox-hugo's interactive export. Hugo's live reload picks up the new markdown automatically — no @samp{stafforini.el} commands needed. @*
+For routine single-file changes, use ox-hugo's interactive export. Hugo's live reload picks up the new markdown automatically — no @samp{stafforini.el} commands needed.
 
 @menu
 * Editing a note::
 * Editing a quote::
+* Org-transclusion support::
 @end menu
 
 @node Editing a note
-@unnumberedsubsec Editing a note
+@subsection Editing a note
 
 @enumerate
 @item
-Edit the org file. @*
+Edit the org file.
 @item
-Export with @samp{C-c C-e H H} (current subtree). @*
+Export with @samp{C-c C-e H H} (current subtree).
 @item
-Hugo live reload picks it up. @*
+Hugo live reload picks it up.
 @end enumerate
 
 @node Editing a quote
-@unnumberedsubsec Editing a quote
+@subsection Editing a quote
 
 @enumerate
 @item
-Edit the @samp{:public:} subtree in the bibliographic note. @*
+Edit the @samp{:public:} subtree in the bibliographic note.
 @item
-Export with @samp{C-c C-e H A} (all subtrees). @*
+Export with @samp{C-c C-e H A} (all subtrees).
 @item
-Hugo live reload picks it up. @*
+Hugo live reload picks it up.
 @end enumerate
 
-@node Targeted updates
-@unnumberedsec Targeted updates
+@node Org-transclusion support
+@subsection Org-transclusion support
 
-Use these when you've changed a specific upstream source @emph{without} editing org content. Each command updates only what it needs to. @*
+Org files may contain @samp{#+transclude:} directives (from @samp{org-transclusion.el}) that pull content from other files.  Both export paths handle these automatically:
 
 @itemize
 @item
-@strong{Changed a Bib@TeX{} entry} → @samp{M-x stafforini-update-works}. Regenerates work pages from Bib@TeX{} data. Auto-restarts the server (Hugo doesn't track shortcode cross-references, so live reload won't propagate Bib@TeX{} changes to citing pages). @*
+@strong{Interactive export} (@samp{C-c C-e H H}): advice on @code{org-hugo-export-wim-to-md} temporarily expands all transclusions before export and removes them afterward, so the source buffer is not permanently modified.  This requires @samp{org-transclusion} to be installed but does not require @code{org-transclusion-mode} to be active.
 
 @item
-@strong{Changed links between notes} → @samp{M-x stafforini-update-backlinks}. Regenerates backlink data from the org-roam database. Auto-restarts the server. @*
+@strong{Batch export} (@samp{M-x stafforini-export-all-notes}): the batch pipeline calls @code{org-transclusion-add-all} per file via @code{export--expand-transclusions} in @samp{export-common.el}.
+@end itemize
+
+@node Targeted updates
+@section Targeted updates
+
+Use these when you've changed a specific upstream source @emph{without} editing org content. Each command updates only what it needs to.
+
+@itemize
+@item
+@strong{Changed a Bib@TeX{} entry} → @samp{M-x stafforini-update-works}. Regenerates work pages from Bib@TeX{} data. Auto-restarts the server (Hugo doesn't track shortcode cross-references, so live reload won't propagate Bib@TeX{} changes to citing pages).
 
 @item
-@strong{Created a new org note file} → @samp{M-x stafforini-prepare-notes}. Adds ox-hugo metadata (@samp{:EXPORT_FILE_NAME:}, @samp{:EXPORT_HUGO_SECTION:}, etc.) to new files that don't have it yet. Run @emph{before} exporting. @*
+@strong{Changed links between notes} → @samp{M-x stafforini-update-backlinks}. Regenerates backlink data from the org-roam database. Auto-restarts the server.
 
 @item
-@strong{Added or changed PDFs} → @samp{M-x stafforini-process-pdfs}. Strips annotations and generates first-page thumbnails. @*
+@strong{Created a new org note file} → @samp{M-x stafforini-prepare-notes}. Adds ox-hugo metadata (@samp{:EXPORT_FILE_NAME:}, @samp{:EXPORT_HUGO_SECTION:}, etc.) to new files that don't have it yet. Run @emph{before} exporting.
 
 @item
-@strong{Search index out of date} → @samp{M-x stafforini-rebuild-search-index}. Rebuilds the Pagefind index. Useful after content changes when you want to test search locally without a full rebuild. @*
+@strong{Added or changed PDFs} → @samp{M-x stafforini-process-pdfs}. Strips annotations and generates first-page thumbnails.
+
+@item
+@strong{Search index out of date} → @samp{M-x stafforini-rebuild-search-index}. Rebuilds the Pagefind index. Useful after content changes when you want to test search locally without a full rebuild.
 @end itemize
 
 @node Batch export
-@unnumberedsec Batch export
+@section Batch export
 
-Use these after mass edits, migrations, or whenever you want to ensure everything is in sync. Each export command handles its full pipeline automatically — no need to run intermediate scripts. @*
+Use these after mass edits, migrations, or whenever you want to ensure everything is in sync. Each export command handles its full pipeline automatically — no need to run intermediate scripts.
 
 @itemize
 @item
-@samp{M-x stafforini-export-all-notes} — exports all org notes, then runs inject-lastmod, generate-backlinks, and generate-citing-notes. @*
+@samp{M-x stafforini-export-all-notes} — exports all org notes, then runs inject-lastmod, generate-backlinks, and generate-citing-notes.
 @item
-@samp{M-x stafforini-export-all-quotes} — generates the ID→slug map, exports all org quotes, then generates work pages and topic pages. @*
+@samp{M-x stafforini-export-all-quotes} — generates the ID→slug map, exports all org quotes, then generates work pages and topic pages. Tag injection (from @samp{:TOPICS:} properties) runs as part of both pipelines.
 @end itemize
 
-After batch exporting, restart the server with @samp{M-x stafforini-start-server} to pick up all changes. @*
+After batch exporting, restart the server with @samp{M-x stafforini-start-server} to pick up all changes.
 
 @node Full rebuild
-@unnumberedsec Full rebuild
+@section Full rebuild
 
-@samp{M-x stafforini-full-rebuild} — runs the entire pipeline from scratch (7 steps: prepare notes → export notes → export quotes → process PDFs → clean public → hugo build → pagefind index). Use after major structural changes, or as a final check before deploying. Overkill for day-to-day work. @*
+@samp{M-x stafforini-full-rebuild} — runs the entire pipeline from scratch (7 steps: prepare notes → export notes → export quotes → process PDFs → clean public contents → hugo build → pagefind index). Use after major structural changes, or as a final check before deploying. Overkill for day-to-day work. The clean step preserves symlinks (e.g. nosync) by deleting contents rather than the directory itself.
 
 @node Deploying
-@unnumberedsec Deploying
+@section Deploying
 
 @enumerate
 @item
-Run the needed export/update steps. @*
+Run the needed export/update steps.
 @item
-@samp{M-x stafforini-start-server} to verify locally. @*
+@samp{M-x stafforini-start-server} to verify locally.
 @item
-@samp{M-x stafforini-deploy}. @*
+@samp{M-x stafforini-deploy}.
 @end enumerate
 
+With a prefix argument (@samp{C-u M-x stafforini-deploy}, or @samp{C-u D} in the menu), the command runs a quick deploy that skips content export, data regeneration, and PDF processing (passing @samp{--quick} to @samp{deploy.sh}).  Use this when only templates, styles, or static assets changed after a recent full export.
+
+@samp{M-x stafforini-deploy-fast-note} (or @samp{f} in the menu) runs the fast note deploy path (passing @samp{--fast-note} to @samp{deploy.sh}). Use this only for minor already-exported note body edits. It preserves the existing @samp{public/} snapshot and Pagefind search index, so use the normal deploy path for slug, date, tag, citation, link, template, quote, work-page, PDF, new-note, or deleted-note changes.
+
+@node Automatic behaviors
+@section Automatic behaviors
+
+These run silently as you work on note org files. No command to
+invoke — configure via @samp{M-x customize-group RET stafforini}.
+
+@menu
+* @samp{#+lastmod} keyword stamping::
+* Duplicate @samp{PROPERTIES} drawer warning::
+@end menu
+
+@node @samp{#+lastmod} keyword stamping
+@subsection @samp{#+lastmod:} keyword stamping
+
+Saving an org file under @samp{stafforini-lastmod-directories} (by default
+@samp{~/My Drive/notes/} and @samp{~/My Drive/bibliographic-notes/}) updates a
+file-level @samp{#+lastmod:} keyword with the current timestamp. The
+stafforini.com pipeline's @samp{inject-lastmod.py} reads this keyword as
+the authoritative last-modification date, in preference to git
+history.
+
+The hook is a no-op in batch mode (@samp{emacs --script}, etc.) and for
+any command listed in @samp{stafforini-lastmod-skip-commands}. Extend that
+list to silence sweeping interactive operations (bulk property
+migrations, @samp{dired-do-query-replace-regexp}, etc.) that modify many
+files without representing real content edits.
+
+@node Duplicate @samp{PROPERTIES} drawer warning
+@subsection Duplicate @samp{PROPERTIES} drawer warning
+
+After saving an org file, a warning is displayed if the first heading
+has two consecutive @samp{:PROPERTIES:} drawers — a known corruption mode
+caused by an intermittent ox-hugo bug.
+
 @node Server management
-@unnumberedsec Server management
+@section Server management
 
 @itemize
 @item
-@samp{M-x stafforini-start-server} — starts (or restarts) the Hugo dev server. Always kills any existing server first to ensure a fresh build. @*
+@samp{M-x stafforini-start-server} — starts (or restarts) the Hugo dev server. Always kills any existing server first to ensure a fresh build.
 @item
-@samp{M-x stafforini-stop-server} — stops the server. @*
+@samp{M-x stafforini-stop-server} — stops the server.
 @end itemize
 
 @menu
@@ -176,19 +239,19 @@ Run the needed export/update steps. @*
 @end menu
 
 @node When to restart the server
-@unnumberedsubsec When to restart the server
+@subsection When to restart the server
 
 @itemize
 @item
-@strong{Same page changed} → live reload works, no restart needed. @*
+@strong{Same page changed} → live reload works, no restart needed.
 @item
-@strong{Change affects other pages} (Bib@TeX{}, backlinks, work pages, citing-notes) → restart with @samp{M-x stafforini-start-server}. The standalone @samp{update-works} and @samp{update-backlinks} commands do this automatically. @*
+@strong{Change affects other pages} (Bib@TeX{}, backlinks, work pages, citing-notes) → restart with @samp{M-x stafforini-start-server}. The standalone @samp{update-works} and @samp{update-backlinks} commands do this automatically.
 @end itemize
 
 @node Commands
-@unnumbered Commands
+@chapter Commands
 
-@multitable {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa} {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+@multitable {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa} {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
 @headitem Command
 @tab Description
 @item @samp{M-x stafforini-prepare-notes}
@@ -199,6 +262,8 @@ Run the needed export/update steps. @*
 @tab ID-slug map + export quotes + work pages, topic pages
 @item @samp{M-x stafforini-update-works}
 @tab Generate/update work pages from Bib@TeX{} data
+@item @samp{M-x stafforini-exclude-work}
+@tab Pick a cite key (via citar), add it to the takedown blocklist, and run the takedown pipeline
 @item @samp{M-x stafforini-update-backlinks}
 @tab Regenerate backlink data from org-roam
 @item @samp{M-x stafforini-process-pdfs}
@@ -212,9 +277,13 @@ Run the needed export/update steps. @*
 @item @samp{M-x stafforini-full-rebuild}
 @tab Run the full pipeline sequentially (7 steps)
 @item @samp{M-x stafforini-deploy}
-@tab Build and deploy to Netlify
+@tab Build and deploy to Netlify (@samp{C-u} for quick deploy)
+@item @samp{M-x stafforini-deploy-fast-note}
+@tab Deploy a minor already-exported note body edit
 @item @samp{M-x stafforini-insert-image}
 @tab Insert an image with AI-generated filename and alt text
+@item @samp{M-x stafforini-insert-topics}
+@tab Insert :TOPICS: property via multi-tag completion
 @end multitable
 
 @bye

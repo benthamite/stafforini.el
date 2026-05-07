@@ -751,6 +751,14 @@ processing (just clean, build, index, deploy)."
   (stafforini--run-script "deploy.sh" (when quick "--quick")))
 
 ;;;###autoload
+(defun stafforini-deploy-fast-note ()
+  "Deploy a minor already-exported note body edit.
+This preserves the existing public build and search index.  Use it
+only after exporting the changed note."
+  (interactive)
+  (stafforini--run-script "deploy.sh" "--fast-note"))
+
+;;;###autoload
 (defun stafforini-start-server ()
   "Start the Hugo dev server in a dedicated `*hugo-server*' buffer.
 Always kills any existing server first to ensure a fresh build.
@@ -833,6 +841,7 @@ backlinks, citing-notes, id-slug-map, work-pages, topic-pages)."
    ["Build & deploy"
     ("R" "Full rebuild" stafforini-full-rebuild)
     ("i" "Rebuild search index" stafforini-rebuild-search-index)
+    ("f" "Fast note deploy" stafforini-deploy-fast-note)
     ("D" "Deploy to Netlify" stafforini-deploy)]
    ["Server"
     ("s" "Start server" stafforini-start-server)
