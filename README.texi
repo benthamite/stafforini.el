@@ -188,7 +188,7 @@ Run the needed export/update steps.
 
 With a prefix argument (@samp{C-u M-x stafforini-deploy}, or @samp{C-u D} in the menu), the command runs a quick deploy that skips content export, data regeneration, and PDF processing (passing @samp{--quick} to @samp{deploy.sh}).  Use this when only templates, styles, or static assets changed after a recent full export.
 
-@samp{M-x stafforini-deploy-fast-note} (or @samp{f} in the menu) runs the fast note deploy path (passing @samp{--fast-note} to @samp{deploy.sh}). Use this only for minor already-exported note body edits. It preserves the existing @samp{public/} snapshot and Pagefind search index, so use the normal deploy path for slug, date, tag, citation, link, template, quote, work-page, PDF, new-note, or deleted-note changes.
+@samp{M-x stafforini-deploy-fast-note} (or @samp{f} in the menu) exports the current note and then runs the fast note deploy path (passing @samp{--fast-note} to @samp{deploy.sh}). Use this only for minor note body edits. It preserves the existing @samp{public/} snapshot and Pagefind search index, so use the normal deploy path for slug, date, tag, citation, link, template, quote, work-page, PDF, new-note, or deleted-note changes.
 
 @node Automatic behaviors
 @section Automatic behaviors
@@ -279,7 +279,7 @@ caused by an intermittent ox-hugo bug.
 @item @samp{M-x stafforini-deploy}
 @tab Build and deploy to Netlify (@samp{C-u} for quick deploy)
 @item @samp{M-x stafforini-deploy-fast-note}
-@tab Deploy a minor already-exported note body edit
+@tab Export and deploy a minor current-note body edit
 @item @samp{M-x stafforini-insert-image}
 @tab Insert an image with AI-generated filename and alt text
 @item @samp{M-x stafforini-insert-topics}

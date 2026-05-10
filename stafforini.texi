@@ -280,12 +280,12 @@ command passes @samp{--quick} to @samp{deploy.sh}, which skips content export,
 data regeneration, and PDF processing.  Use the quick form when only
 templates, styles, or static assets changed after a recent full export.
 
-The command @code{stafforini-deploy-fast-note} deploys a minor
-already-exported note body edit.  Internally it passes @samp{--fast-note} to
-@samp{deploy.sh}, preserving the existing @samp{public/} snapshot and Pagefind
-search index.  Use the normal deploy path for slug, date, tag,
-citation, link, template, quote, work-page, PDF, new-note, or
-deleted-note changes.
+The command @code{stafforini-deploy-fast-note} exports the current note and
+deploys a minor note body edit.  Internally it runs ox-hugo for the
+current note and then passes @samp{--fast-note} to @samp{deploy.sh}, preserving the
+existing @samp{public/} snapshot and Pagefind search index.  Use the normal
+deploy path for slug, date, tag, citation, link, template, quote,
+work-page, PDF, new-note, or deleted-note changes.
 
 @node Server management
 @section Server management

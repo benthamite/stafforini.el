@@ -72,7 +72,7 @@ After batch exporting, restart the server with =M-x stafforini-start-server= to 
 
 With a prefix argument (=C-u M-x stafforini-deploy=, or =C-u D= in the menu), the command runs a quick deploy that skips content export, data regeneration, and PDF processing (passing =--quick= to =deploy.sh=).  Use this when only templates, styles, or static assets changed after a recent full export.
 
-=M-x stafforini-deploy-fast-note= (or =f= in the menu) runs the fast note deploy path (passing =--fast-note= to =deploy.sh=). Use this only for minor already-exported note body edits. It preserves the existing =public/= snapshot and Pagefind search index, so use the normal deploy path for slug, date, tag, citation, link, template, quote, work-page, PDF, new-note, or deleted-note changes.
+=M-x stafforini-deploy-fast-note= (or =f= in the menu) exports the current note and then runs the fast note deploy path (passing =--fast-note= to =deploy.sh=). Use this only for minor note body edits. It preserves the existing =public/= snapshot and Pagefind search index, so use the normal deploy path for slug, date, tag, citation, link, template, quote, work-page, PDF, new-note, or deleted-note changes.
 
 ** Automatic behaviors
 
@@ -126,6 +126,6 @@ caused by an intermittent ox-hugo bug.
 | =M-x stafforini-rebuild-search-index= | Rebuild the Pagefind search index                    |
 | =M-x stafforini-full-rebuild=       | Run the full pipeline sequentially (7 steps)           |
 | =M-x stafforini-deploy=            | Build and deploy to Netlify (=C-u= for quick deploy)   |
-| =M-x stafforini-deploy-fast-note=  | Deploy a minor already-exported note body edit         |
+| =M-x stafforini-deploy-fast-note=  | Export and deploy a minor current-note body edit       |
 | =M-x stafforini-insert-image=       | Insert an image with AI-generated filename and alt text |
 | =M-x stafforini-insert-topics=      | Insert :TOPICS: property via multi-tag completion       |

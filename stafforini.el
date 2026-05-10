@@ -752,11 +752,22 @@ processing (just clean, build, index, deploy)."
 
 ;;;###autoload
 (defun stafforini-deploy-fast-note ()
-  "Deploy a minor already-exported note body edit.
-This preserves the existing public build and search index.  Use it
-only after exporting the changed note."
+  "Export the current note and deploy it with the fast note path.
+This preserves the existing public build and search index, so use
+it only for minor note body edits."
   (interactive)
+  (stafforini--export-current-note)
   (stafforini--run-script "deploy.sh" "--fast-note"))
+
+(defun stafforini--export-current-note ()
+  "Export the current Org note to Hugo markdown."
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not an org-mode buffer"))
+  (unless (stafforini--note-file-p)
+    (user-error "Current buffer is not a stafforini note"))
+  (save-buffer)
+  (require 'ox-hugo)
+  (org-hugo-export-wim-to-md :all-subtrees nil nil :noerror))
 
 ;;;###autoload
 (defun stafforini-start-server ()
