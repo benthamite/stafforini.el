@@ -18,6 +18,7 @@
 ;;; Code:
 
 (require 'compile)
+(require 'json)
 (require 'paths)
 (require 'transient)
 
@@ -767,7 +768,97 @@ it only for minor note body edits."
     (user-error "Current buffer is not a stafforini note"))
   (save-buffer)
   (require 'ox-hugo)
-  (org-hugo-export-wim-to-md :all-subtrees nil nil :noerror))
+  (stafforini--load-export-link-data)
+  (advice-add 'org-hugo-link :around #'stafforini--resolve-export-link)
+  (unwind-protect
+      (org-hugo-export-wim-to-md :all-subtrees nil nil :noerror)
+    (advice-remove 'org-hugo-link #'stafforini--resolve-export-link)))
+
+(defvar stafforini--export-id-slug-map nil
+  "Hash table mapping Org IDs to Hugo slugs during interactive export.")
+
+(defvar stafforini--export-id-url-overrides nil
+  "Hash table mapping Org IDs to overridden URLs during interactive export.")
+
+(defvar stafforini--export-slug-url-overrides nil
+  "Hash table mapping Hugo slugs to overridden URLs during interactive export.")
+
+(defvar stafforini--export-published-slugs nil
+  "Hash table of published note slugs during interactive export.")
+
+(defun stafforini--load-export-link-data ()
+  "Load generated link data used by interactive ox-hugo exports."
+  (setq stafforini--export-id-slug-map
+        (stafforini--load-json-table "data/id-slug-map.json"))
+  (setq stafforini--export-id-url-overrides
+        (stafforini--load-json-table "data/id-url-overrides.json"))
+  (setq stafforini--export-slug-url-overrides
+        (stafforini--load-json-table "data/slug-url-overrides.json"))
+  (setq stafforini--export-published-slugs
+        (stafforini--published-slug-table)))
+
+(defun stafforini--load-json-table (relative-path)
+  "Load RELATIVE-PATH under `stafforini-hugo-dir' as a hash table."
+  (let ((path (file-name-concat stafforini-hugo-dir relative-path)))
+    (if (file-exists-p path)
+        (with-temp-buffer
+          (insert-file-contents path)
+          (json-parse-string (buffer-string) :object-type 'hash-table))
+      (make-hash-table :test 'equal))))
+
+(defun stafforini--published-slug-table ()
+  "Return a hash table containing known published slugs."
+  (let ((slugs (make-hash-table :test 'equal)))
+    (maphash (lambda (_id slug)
+               (puthash slug t slugs))
+             stafforini--export-id-slug-map)
+    slugs))
+
+(defun stafforini--resolve-export-link (orig-fn link contents info)
+  "Resolve note LINK before ORIG-FN emits ox-hugo relrefs.
+CONTENTS and INFO are the remaining arguments passed to
+`org-hugo-link'."
+  (let ((type (org-element-property :type link))
+        (path (org-element-property :path link)))
+    (cond
+     ((string= type "id")
+      (stafforini--export-id-link path contents))
+     ((and (string= type "file")
+           (string-suffix-p ".org" path))
+      (stafforini--export-file-link path contents))
+     (t
+      (condition-case _err
+          (funcall orig-fn link contents info)
+        (org-link-broken
+         (or contents (org-element-property :path link))))))))
+
+(defun stafforini--export-id-link (path contents)
+  "Return Markdown for an ID link at PATH with CONTENTS."
+  (let* ((id (upcase path))
+         (slug (gethash id stafforini--export-id-slug-map)))
+    (if slug
+        (format "[%s](%s)" (or contents slug)
+                (stafforini--export-id-url id slug))
+      (or contents ""))))
+
+(defun stafforini--export-file-link (path contents)
+  "Return Markdown for a file link at PATH with CONTENTS."
+  (let* ((slug (file-name-sans-extension (file-name-nondirectory path)))
+         (published (gethash slug stafforini--export-published-slugs)))
+    (if published
+        (format "[%s](%s)" (or contents slug)
+                (stafforini--export-slug-url slug))
+      (or contents ""))))
+
+(defun stafforini--export-id-url (id slug)
+  "Return the exported URL for ID, falling back to SLUG."
+  (or (gethash id stafforini--export-id-url-overrides)
+      (stafforini--export-slug-url slug)))
+
+(defun stafforini--export-slug-url (slug)
+  "Return the exported URL for SLUG."
+  (or (gethash slug stafforini--export-slug-url-overrides)
+      (format "/notes/%s/" slug)))
 
 ;;;###autoload
 (defun stafforini-start-server ()
