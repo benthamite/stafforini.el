@@ -74,6 +74,12 @@ With a prefix argument (=C-u M-x stafforini-deploy=, or =C-u D= in the menu), th
 
 =M-x stafforini-deploy-fast-note= (or =f= in the menu) exports the current note and then runs the fast note deploy path (passing =--fast-note= to =deploy.sh=). Use this only for minor note body edits. It preserves the existing =public/= snapshot and Pagefind search index, so use the normal deploy path for slug, date, tag, citation, link, template, quote, work-page, PDF, new-note, or deleted-note changes.
 
+During interactive note export, =id:= links are resolved through the
+site's generated ID maps. Links to unpublished targets become plain
+text, links to published notes become =/notes/slug/= URLs, and links
+to headings inside the same note become local fragment links such as
+=#copycat-delays=.
+
 ** Automatic behaviors
 
 These run silently as you work on note org files. No command to

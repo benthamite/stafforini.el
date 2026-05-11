@@ -835,11 +835,32 @@ CONTENTS and INFO are the remaining arguments passed to
 (defun stafforini--export-id-link (path contents)
   "Return Markdown for an ID link at PATH with CONTENTS."
   (let* ((id (upcase path))
-         (slug (gethash id stafforini--export-id-slug-map)))
-    (if slug
-        (format "[%s](%s)" (or contents slug)
-                (stafforini--export-id-url id slug))
-      (or contents ""))))
+         (slug (gethash id stafforini--export-id-slug-map))
+         (anchor (stafforini--local-id-anchor id)))
+    (cond
+     (anchor
+      (format "[%s](#%s)" (or contents anchor) anchor))
+     (slug
+      (format "[%s](%s)" (or contents slug)
+              (stafforini--export-id-url id slug)))
+     (t
+      (or contents "")))))
+
+(defun stafforini--local-id-anchor (id)
+  "Return the local heading anchor for ID in the current buffer."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (goto-char (point-min))
+      (let ((case-fold-search t))
+        (when (re-search-forward
+               (format "^\\s-*:ID:\\s-*%s\\s-*$" (regexp-quote id))
+               nil t)
+          (org-back-to-heading t)
+          (unless (org-entry-get nil "EXPORT_FILE_NAME")
+            (or (org-entry-get nil "CUSTOM_ID")
+                (org-hugo-slug (org-get-heading t t t t)
+                               :allow-double-hyphens))))))))
 
 (defun stafforini--export-file-link (path contents)
   "Return Markdown for a file link at PATH with CONTENTS."
