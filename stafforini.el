@@ -312,11 +312,16 @@ otherwise at the top of the buffer."
           (goto-char (point-min))
           (insert (format "#+lastmod: %s\n" timestamp))))))))
 
+;;;###autoload
 (defun stafforini--enable-lastmod-stamping ()
-  "Attach `stafforini-maybe-stamp-lastmod' locally when visiting a note."
+  "Attach `stafforini-maybe-stamp-lastmod' locally when visiting a note.
+Autoloaded so that the `org-mode-hook' registration below takes effect at
+startup: without it, notes saved before any `stafforini' command has been
+invoked were never stamped."
   (when (stafforini--note-file-p)
     (add-hook 'before-save-hook #'stafforini-maybe-stamp-lastmod nil t)))
 
+;;;###autoload
 (add-hook 'org-mode-hook #'stafforini--enable-lastmod-stamping)
 
 ;;;; Commands

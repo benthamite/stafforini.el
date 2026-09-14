@@ -92,7 +92,9 @@ Saving an org file under =stafforini-lastmod-directories= (by default
 file-level =#+lastmod:= keyword with the current timestamp. The
 stafforini.com pipeline's =inject-lastmod.py= reads this keyword as
 the authoritative last-modification date, in preference to git
-history.
+history. The hook is registered through the package autoloads, so it is
+active from startup without any =stafforini= command having been run;
+visiting the first Org buffer of a session loads the package.
 
 The hook is a no-op in batch mode (=emacs --script=, etc.) and for
 any command listed in =stafforini-lastmod-skip-commands=. Extend that
